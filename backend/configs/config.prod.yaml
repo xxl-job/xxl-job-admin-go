@@ -1,0 +1,26 @@
+# 生产配置示例。敏感项（DSN 密码、JWT secret）用环境变量覆盖：
+#   DB_DSN、JWT_SECRET、SERVER_HTTP_ADDR、SERVER_GRPC_ADDR 等（. → _，全大写）
+
+server:
+  http_addr: ":8080"
+  grpc_addr: ":9090"
+
+db:
+  driver: mysql
+  dsn: "xxljob:CHANGE_ME@tcp(mysql:3306)/xxl_job?charset=utf8mb4&parseTime=True&loc=Local"
+  max_open_conns: 100
+  max_idle_conns: 20
+
+jwt:
+  secret: "CHANGE_ME_TO_RANDOM_64_CHARS"
+  ttl: 24h
+
+lock:
+  lease_ttl: 30s
+  renew_interval: 10s
+
+log:
+  level: info
+  format: json
+
+node_id: ""

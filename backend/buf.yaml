@@ -1,0 +1,13 @@
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+  except:
+    - SERVICE_SUFFIX                  # ExecutorLink 有意不带 Service 后缀
+    - RPC_REQUEST_STANDARD_NAME       # 双向流复用 ExecutorMessage/AdminMessage
+    - RPC_RESPONSE_STANDARD_NAME
+breaking:
+  use:
+    - FILE

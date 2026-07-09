@@ -1,0 +1,55 @@
+# GoReleaser 配置：多平台二进制 + checksum + SBOM
+# 文档：https://goreleaser.com
+version: 2
+
+project_name: xxl-job-admin-go
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: admin
+    dir: backend
+    main: ./cmd/server
+    binary: xxl-job-admin-go
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+
+  - id: executor-sample
+    dir: backend
+    main: ./cmd/executor-sample
+    binary: xxl-job-executor-sample
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Binary }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: checksums.txt
+
+# 软件物料清单（供应链安全）
+sboms:
+  - artifacts: archive
+
+changelog:
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  github:
+    owner: xxl-job
+    name: xxl-job-admin-go
+  draft: true
+  prerelease: auto
