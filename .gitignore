@@ -1,0 +1,43 @@
+# 二进制
+/backend/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go
+/vendor/
+*.test
+*.out
+coverage.txt
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# 配置（含敏感信息时）
+configs/config.local.yaml
+*.local.yaml
+
+# 前端 / Node（node_modules/dist 任意位置均忽略）
+node_modules/
+/frontend/dist/
+/frontend/.vite/
+/docs/.vitepress/dist/
+
+# AI 工具配置（不入开源仓库）
+/.claude/
+
+# 个人部署脚本（含服务器私有信息，本地保留，不入库）
+deploy/setup-docs-server.sh
+
+# 生成代码（proto 生成物可重新生成，按需保留）
+# /internal/gen/
+
+# 日志
+*.log
+/logs/

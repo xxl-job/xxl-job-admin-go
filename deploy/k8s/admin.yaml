@@ -1,0 +1,68 @@
+# XXL-JOB-Admin-Go K8s 部署清单
+# 多副本 HA：admin 集群部署，MySQL 租约锁保证唯一 leader 调度
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xxl-job-admin
+  labels:
+    app: xxl-job-admin
+spec:
+  replicas: 2  # 多副本 HA（leader 选举保证唯一调度节点）
+  selector:
+    matchLabels:
+      app: xxl-job-admin
+  template:
+    metadata:
+      labels:
+        app: xxl-job-admin
+    spec:
+      containers:
+        - name: admin
+          image: xxl-job-admin-go:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9090
+              name: grpc
+          env:
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: xxl-job-secret
+                  key: dsn
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: xxl-job-secret
+                  key: jwt
+            - name: LOG_FORMAT
+              value: json
+            - name: LOG_LEVEL
+              value: info
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xxl-job-admin
+spec:
+  selector:
+    app: xxl-job-admin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: grpc
+      port: 9090
+      targetPort: 9090

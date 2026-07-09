@@ -1,0 +1,19 @@
+# 代码所有者配置：https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# 请将 @xxl-job 替换为实际的维护者 GitHub 用户名/团队
+
+# 默认所有者
+*                            @xxl-job
+
+# 后端 Go
+/backend/                    @xxl-job
+/backend/proto/              @xxl-job
+
+# 前端
+/frontend/                   @xxl-job
+
+# 文档
+/docs/                       @xxl-job
+
+# CI / 部署
+/.github/                    @xxl-job
+/deploy/                     @xxl-job

@@ -1,0 +1,18 @@
+{
+  "name": "xxl-job-admin-go-docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "XXL-JOB-Admin-Go 文档站（VitePress）",
+  "type": "module",
+  "scripts": {
+    "docs:dev": "vitepress dev .",
+    "docs:build": "vitepress build .",
+    "docs:preview": "vitepress preview ."
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

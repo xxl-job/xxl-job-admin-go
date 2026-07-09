@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package xxl.v1;
+
+import "xxl/v1/common.proto";
+
+option go_package = "xxl-job-admin-go/internal/gen/xxl/v1;xxlv1";
+
+// ============ 执行器 ↔ admin 主链路：单一双向流 ============
+service ExecutorLink {
+  // 执行器发起长连接，后续所有交互复用此流：注册/心跳/结果/日志/负载
+  rpc Link(stream ExecutorMessage) returns (stream AdminMessage);
+}
+
+message ExecutorMessage {
+  string executor_id = 1;
+  oneof payload {
+    RegisterRequest register    = 2;
+    Heartbeat       heartbeat   = 3;
+    TaskResult      task_result = 4;
+    LogChunk        log_chunk   = 5;
+    LoadReport      load        = 6;
+  }
+}
+
+message AdminMessage {
+  oneof payload {
+    RegisterAck  register_ack = 1;
+    TriggerTask  trigger      = 2;
+    CancelTask   cancel       = 3;
+    ConfigUpdate config       = 4;
+  }
+}
+
+message RegisterRequest {
+  string              app_name = 1;
+  string              version  = 2;
+  repeated string     handlers = 3;  // 执行器支持的任务 handler 列表
+  map<string, string> meta     = 4;
+}
+
+message RegisterAck {
+  bool   accepted = 1;
+  string message  = 2;
+}
+
+message Heartbeat {
+  int64 timestamp = 1;
+}
+
+message CancelTask {
+  int64 job_id = 1;
+  int64 log_id = 2;
+}
+
+message ConfigUpdate {
+  map<string, string> items = 1;
+}
+
+// ============ 独立 RPC：按需操作（admin 对外）============
+service AdminService {
+  rpc TriggerTask(TriggerTaskRequest) returns (TriggerTaskResponse);
+  rpc StreamLogs(LogRequest) returns (stream LogChunk);
+  rpc QueryTaskStatus(StatusRequest) returns (StatusResponse);
+}
+
+message TriggerTaskRequest {
+  int64  job_id          = 1;
+  string executor_params = 2;
+  string address         = 3;  // 指定执行器地址，空则按路由策略
+}
+
+message TriggerTaskResponse {
+  ReturnT result = 1;
+}
+
+message LogRequest {
+  int64 log_id    = 1;
+  int64 from_line = 2;
+}
+
+message StatusRequest {
+  int64 log_id = 1;
+}
+
+message StatusResponse {
+  int32  code = 1;
+  string msg  = 2;
+}
