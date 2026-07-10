@@ -1,0 +1,103 @@
+{
+  "annotations": { "list": [] },
+  "description": "XXL-JOB-Admin-Go 调度中心监控大盘（4 核心指标）",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{"color": "green"}, {"color": "red", "value": 80}] } }, "overrides": [] },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "xxl_job_running", "legendFormat": "运行中", "refId": "A" }],
+      "title": "运行中任务数",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{"color": "red"}, {"color": "green", "value": 1}] } }, "overrides": [] },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum(xxl_job_executor_online)", "legendFormat": "在线执行器", "refId": "A" }],
+      "title": "在线执行器总数",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "ops", "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 3,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum by (handler) (rate(xxl_job_trigger_total[1m]))", "legendFormat": "{{handler}}", "refId": "A" }],
+      "title": "触发速率（按 handler）",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "thresholds": { "mode": "absolute", "steps": [{"color": "green"}, {"color": "orange", "value": 0.05}, {"color": "red", "value": 0.2}] } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 4,
+      "options": { "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "expr": "sum by (handler) (rate(xxl_job_trigger_fail_total[5m])) / clamp_min(sum by (handler) (rate(xxl_job_trigger_total[5m])), 1)",
+        "legendFormat": "{{handler}}", "refId": "A"
+      }],
+      "title": "触发失败率（按 handler）",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 5,
+      "options": { "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "xxl_job_executor_online", "legendFormat": "{{app}}", "refId": "A" }],
+      "title": "各执行器分组在线数",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "ops", "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "id": 6,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum by (handler) (rate(xxl_job_trigger_fail_total[5m]))", "legendFormat": "{{handler}}", "refId": "A" }],
+      "title": "触发失败速率（按 handler）",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["xxl-job", "scheduler"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+        "hide": 0,
+        "label": "Prometheus 数据源",
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "XXL-JOB-Admin-Go",
+  "uid": "xxl-job-admin-go",
+  "version": 1,
+  "weekStart": ""
+}

@@ -54,6 +54,12 @@ xxl_job_executor_online
 
 建议告警：某 handler 失败率超阈值持续 N 分钟；某 `app` 的 `executor_online` 跌至 0（执行器全部离线，任务将无法调度）。
 
+### Grafana 大盘
+
+仓库提供开箱即用的 Grafana 大盘模板 [`deploy/grafana/xxl-job-admin-go.json`](https://github.com/xxl-job/xxl-job-admin-go/tree/main/deploy/grafana)，含 6 个面板：运行中任务数、在线执行器总数、触发速率（按 handler）、触发失败率、各分组在线数、失败速率。
+
+导入：Grafana → Dashboards → Import → 上传该 JSON，选择 Prometheus 数据源。配合上面的告警阈值即可形成监控闭环。
+
 ## 日志
 
 zap 结构化日志，默认 `json` / `info`，每条含 `node_id`（节点标识），便于多副本环境区分来源。开发调试设 `LOG_FORMAT=console LOG_LEVEL=debug`。
