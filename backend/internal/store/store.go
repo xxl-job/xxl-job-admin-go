@@ -60,6 +60,7 @@ func (s *mysqlStore) AutoMigrate() error {
 		&model.AuditLog{},
 		&model.AlarmRule{},
 		&model.XxlJobLogGlue{},
+		&model.JobTriggerDedup{},
 	)
 }
 

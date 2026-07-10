@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -241,8 +242,21 @@ func (t *Trigger) dispatch(job *model.Job, conn *registry.ExecutorConn, logID in
 	}
 }
 
-// createTaskRun 创建执行记录，返回 logID。
+// createTaskRun 创建执行记录，返回 logID。含触发幂等：抢占 (job_id, fire_second, executor_address)，
+// 唯一冲突即代表 leader 切换窗口已对该执行器触发，跳过避免重复执行。
 func (t *Trigger) createTaskRun(job *model.Job, conn *registry.ExecutorConn, shardIndex, shardTotal int) int64 {
+	fireSec := time.Now().Unix()
+	if err := t.db.Create(&model.JobTriggerDedup{
+		JobID: job.ID, FireSecond: fireSec, ExecutorAddress: conn.Address,
+	}).Error; err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "Duplicate") {
+			t.log.Info("trigger dedup skip (already fired this second)",
+				zap.Uint64("job_id", job.ID), zap.String("addr", conn.Address))
+		} else {
+			t.log.Error("trigger dedup insert", zap.Uint64("job_id", job.ID), zap.Error(err))
+		}
+		return 0
+	}
 	run := &model.TaskRun{
 		JobID:           job.ID,
 		ExecutorAddress: conn.Address,
@@ -260,4 +274,25 @@ func (t *Trigger) createTaskRun(job *model.Job, conn *registry.ExecutorConn, sha
 	}
 	metrics.TriggerTotal.WithLabelValues(job.ExecutorHandler).Inc()
 	return int64(run.ID)
+}
+
+// RunDedupCleaner 周期清理过期的触发去重记录（保留最近 10 分钟），仅 leader 调用。
+func RunDedupCleaner(ctx context.Context, db *gorm.DB, log *zap.Logger) {
+	ticker := time.NewTicker(10 * time.Minute)
+	defer ticker.Stop()
+	clean := func() {
+		cutoff := time.Now().Add(-10 * time.Minute)
+		if err := db.Where("created_at < ?", cutoff).Delete(&model.JobTriggerDedup{}).Error; err != nil {
+			log.Warn("clean trigger dedup", zap.Error(err))
+		}
+	}
+	clean()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			clean()
+		}
+	}
 }

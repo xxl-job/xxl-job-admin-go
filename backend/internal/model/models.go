@@ -56,6 +56,18 @@ type Job struct {
 
 func (Job) TableName() string { return "jobs" }
 
+// JobTriggerDedup 触发幂等去重：防止 leader 切换窗口对同一执行器同秒重复触发。
+// (job_id, fire_second, executor_address) 唯一——冲突即代表该秒已触发，跳过。
+type JobTriggerDedup struct {
+	ID              uint64    `gorm:"primaryKey;autoIncrement" json:"id"`
+	JobID           uint64    `gorm:"not null;column:job_id;uniqueIndex:uk_dedup,priority:1" json:"job_id"`
+	FireSecond      int64     `gorm:"not null;column:fire_second;uniqueIndex:uk_dedup,priority:2" json:"fire_second"`
+	ExecutorAddress string    `gorm:"size:128;not null;default:'';column:executor_address;uniqueIndex:uk_dedup,priority:3" json:"executor_address"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+func (JobTriggerDedup) TableName() string { return "job_trigger_dedup" }
+
 // TaskRun 任务执行记录（生产用按天分区表，见 migrations/001_init.sql）
 type TaskRun struct {
 	ID                    uint64     `gorm:"primaryKey;autoIncrement" json:"id"`

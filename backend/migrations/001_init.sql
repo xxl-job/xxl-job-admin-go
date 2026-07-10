@@ -114,3 +114,14 @@ CREATE TABLE IF NOT EXISTS alarm_rules (
   PRIMARY KEY (id),
   KEY idx_job (job_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 触发幂等去重：防 leader 切换窗口对同一执行器同秒重复触发（RunDedupCleaner 定期清理）
+CREATE TABLE IF NOT EXISTS job_trigger_dedup (
+  id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  job_id           BIGINT UNSIGNED NOT NULL,
+  fire_second      BIGINT      NOT NULL,
+  executor_address VARCHAR(128) NOT NULL DEFAULT '',
+  created_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_dedup (job_id, fire_second, executor_address)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

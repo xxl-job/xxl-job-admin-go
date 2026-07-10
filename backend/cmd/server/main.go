@@ -93,6 +93,7 @@ func main() {
 	defer cancel()
 	go runLease(ctx, locker, cfg, logger, func(leadCtx context.Context) {
 		go scheduler.RunPartitionMaintainer(leadCtx, st.DB(), logger) // 仅 leader 维护分区
+		go trigger.RunDedupCleaner(leadCtx, st.DB(), logger)          // 仅 leader 清理触发去重
 		sched.Run(leadCtx)
 	})
 
