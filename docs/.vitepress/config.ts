@@ -17,33 +17,44 @@ export default defineConfig({
     nav: [
       { text: '首页', link: '/' },
       { text: '快速开始', link: '/guide/getting-started' },
+      { text: '运维', link: '/operations' },
+      { text: '设计', link: '/design/architecture' },
       { text: 'GitHub', link: 'https://github.com/xxl-job/xxl-job-admin-go' }
     ],
-    sidebar: {
-      '/guide/': [
-        {
-          text: '入门',
-          items: [
-            { text: '快速开始', link: '/guide/getting-started' },
-            { text: '仪表盘', link: '/guide/dashboard' }
-          ]
-        },
-        {
-          text: '核心功能',
-          items: [
-            { text: '执行器管理', link: '/guide/executor' },
-            { text: '任务管理', link: '/guide/job' },
-            { text: '调度日志', link: '/guide/log' }
-          ]
-        },
-        {
-          text: '系统管理',
-          items: [
-            { text: '用户与权限', link: '/guide/user' }
-          ]
-        }
-      ]
-    },
+    sidebar: [
+      {
+        text: '入门',
+        items: [
+          { text: '快速开始', link: '/guide/getting-started' },
+          { text: '仪表盘', link: '/guide/dashboard' }
+        ]
+      },
+      {
+        text: '核心功能',
+        items: [
+          { text: '执行器管理', link: '/guide/executor' },
+          { text: '任务管理', link: '/guide/job' },
+          { text: '调度日志', link: '/guide/log' }
+        ]
+      },
+      {
+        text: '系统管理',
+        items: [{ text: '用户与权限', link: '/guide/user' }]
+      },
+      {
+        text: '运维',
+        items: [{ text: '运维与可观测', link: '/operations' }]
+      },
+      {
+        text: '设计参考',
+        items: [
+          { text: '架构设计', link: '/design/architecture' },
+          { text: '部署指南', link: '/design/deployment' },
+          { text: 'API 参考', link: '/design/api' },
+          { text: '执行器开发', link: '/design/executor-dev' }
+        ]
+      }
+    ],
     socialLinks: [
       { icon: 'github', link: 'https://github.com/xxl-job/xxl-job-admin-go' }
     ],

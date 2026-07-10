@@ -14,6 +14,9 @@ on:
       - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 # 部署串行，不取消进行中的 run（避免半成品）
 concurrency:
   group: deploy-docs

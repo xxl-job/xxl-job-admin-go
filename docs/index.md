@@ -4,7 +4,7 @@ layout: home
 hero:
   name: XXL-JOB-Admin-Go
   text: Go 实现的分布式任务调度中心
-  tagline: 兼容 XXL-JOB 协议 · gRPC 调度 · MySQL 租约锁 · 无 Redis
+  tagline: XXL-JOB 调度中心的 Go 现代化重实现 · gRPC 长连接调度 · MySQL 租约锁 · 无 Redis
   actions:
     - theme: brand
       text: 架构设计

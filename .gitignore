@@ -23,6 +23,9 @@ coverage.txt
 configs/config.local.yaml
 *.local.yaml
 
+# 环境变量（含密钥，docker compose .env）
+.env
+
 # 前端 / Node（node_modules/dist 任意位置均忽略）
 node_modules/
 /frontend/dist/

@@ -1,4 +1,4 @@
+# pnpm 11 配置：允许 esbuild 跑 postinstall（拉取平台二进制）；关闭跑前依赖校验。
 allowBuilds:
   esbuild: true
-onlyBuiltDependencies:
-  - esbuild
+verifyDepsBeforeRun: false
