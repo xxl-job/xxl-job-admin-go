@@ -89,6 +89,7 @@ func (s *Scheduler) Run(ctx context.Context) {
 }
 
 // preload 预读未来 5s 内待触发任务入时间轮。
+// 配置热更新：每次预读都用最新 DB 数据刷新时间轮快照——改 CRON/频率后最多 5s 生效，无需 stop/start。
 func (s *Scheduler) preload(ctx context.Context) {
 	horizon := time.Now().Add(5 * time.Second).UnixMilli()
 	var jobs []model.Job
@@ -103,15 +104,14 @@ func (s *Scheduler) preload(ctx context.Context) {
 	s.mu.Lock()
 	for i := range jobs {
 		j := jobs[i]
-		if s.inFlight[j.ID] {
-			continue // 已在时间轮
-		}
-		s.inFlight[j.ID] = true
 		sec := j.TriggerNextTime / 1000
 		if sec < nowSec {
 			sec = nowSec // 过期任务放当前秒立即触发（补偿）
 		}
-		s.ring[sec] = append(s.ring[sec], &scheduledEntry{job: &j, expectedNextMs: j.TriggerNextTime})
+		// 移除该 job 的旧快照（配置/next 可能已变），用最新 DB 数据重新入轮
+		s.removeEntryLocked(j.ID)
+		s.ring[sec] = append(s.ring[sec], &scheduledEntry{job: &jobs[i], expectedNextMs: j.TriggerNextTime})
+		s.inFlight[j.ID] = true
 	}
 	s.mu.Unlock()
 
@@ -119,6 +119,21 @@ func (s *Scheduler) preload(ctx context.Context) {
 	var running int64
 	if err := s.db.WithContext(ctx).Model(&model.Job{}).Where("trigger_status = 1").Count(&running).Error; err == nil {
 		metrics.JobRunning.Set(float64(running))
+	}
+}
+
+// removeEntryLocked 从时间轮移除指定 job 的旧快照（调用方持 s.mu）。
+func (s *Scheduler) removeEntryLocked(jobID uint64) {
+	for sec, entries := range s.ring {
+		for i, e := range entries {
+			if e.job.ID == jobID {
+				s.ring[sec] = append(entries[:i], entries[i+1:]...)
+				if len(s.ring[sec]) == 0 {
+					delete(s.ring, sec)
+				}
+				return
+			}
+		}
 	}
 }
 

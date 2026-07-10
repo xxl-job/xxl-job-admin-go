@@ -1,9 +1,16 @@
-// Package alarm 告警：任务失败时触发，支持多渠道扩展（邮件/钉钉/企微）。
-// 默认 LogNotifier 仅记录日志；生产可注入 EmailNotifier 等真实渠道。
+// Package alarm 告警：任务失败时触发，支持多渠道（日志/钉钉/企微/飞书 webhook + 邮件 SMTP）。
+// 默认 LogNotifier 仅记录日志；按配置注入 WebhookNotifier/EmailNotifier 启用真实渠道。
 package alarm
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/smtp"
+	"strings"
 
 	"go.uber.org/zap"
 )
@@ -58,13 +65,79 @@ func (n *LogNotifier) Notify(_ context.Context, e Event) error {
 	return nil
 }
 
-// EmailNotifier 邮件告警占位（P6 接 net/smtp + 模板）。
-type EmailNotifier struct {
-	Log *zap.Logger
+// formatMessage 统一告警文本。
+func formatMessage(e Event) string {
+	return fmt.Sprintf("[XXL-JOB 告警] 任务#%d %s 执行失败(code=%d)\n日志ID: %d\n执行器: %s\n消息: %s",
+		e.JobID, e.JobDesc, e.HandleCode, e.LogID, e.Address, e.HandleMsg)
 }
 
-// Notify 邮件告警（当前仅记日志）。
-func (n *EmailNotifier) Notify(_ context.Context, e Event) error {
-	n.Log.Info("email alarm (stub)", zap.Uint64("job_id", e.JobID), zap.String("addr", e.Address))
+// WebhookNotifier 通用 webhook 告警（钉钉/企微/飞书 text 消息）。
+type WebhookNotifier struct {
+	Platform string        // dingtalk | wechat | feishu
+	URL      string
+	Client   *http.Client
+	Log      *zap.Logger
+}
+
+// Notify POST text 消息到 webhook。
+func (n *WebhookNotifier) Notify(ctx context.Context, e Event) error {
+	msg := formatMessage(e)
+	var payload map[string]any
+	switch n.Platform {
+	case "feishu":
+		payload = map[string]any{"msg_type": "text", "content": map[string]any{"text": msg}}
+	default: // dingtalk / wechat 同构
+		payload = map[string]any{"msgtype": "text", "text": map[string]any{"content": msg}}
+	}
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, n.URL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := n.Client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("webhook %s: HTTP %d", n.Platform, resp.StatusCode)
+	}
 	return nil
+}
+
+// EmailNotifier 邮件告警（SMTP）。Host 为空时跳过（未配置）。
+type EmailNotifier struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	From     string
+	To       []string
+	Log      *zap.Logger
+}
+
+// Notify 经 SMTP 发送告警邮件。
+func (n *EmailNotifier) Notify(_ context.Context, e Event) error {
+	if n.Host == "" || len(n.To) == 0 {
+		return nil // 未配置，跳过
+	}
+	subject := fmt.Sprintf("=?UTF-8?B?%s?=", base64.StdEncoding.EncodeToString([]byte(
+		fmt.Sprintf("[XXL-JOB 告警] 任务#%d %s 执行失败", e.JobID, e.JobDesc))))
+	body := formatMessage(e)
+	msg := []byte(strings.Join([]string{
+		"From: " + n.From,
+		"To: " + strings.Join(n.To, ","),
+		"Subject: " + subject,
+		"MIME-Version: 1.0",
+		"Content-Type: text/plain; charset=UTF-8",
+		"",
+		body,
+	}, "\r\n"))
+	addr := fmt.Sprintf("%s:%d", n.Host, n.Port)
+	var auth smtp.Auth
+	if n.User != "" {
+		auth = smtp.PlainAuth("", n.User, n.Password, n.Host)
+	}
+	return smtp.SendMail(addr, auth, n.From, n.To, msg)
 }

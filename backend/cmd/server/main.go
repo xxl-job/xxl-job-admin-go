@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -61,7 +62,26 @@ func main() {
 	hub := logstream.New()
 
 	// 5. 告警 + 触发器 + 调度器（仅 leader 节点运行调度）
-	alerter := alarm.NewMulti(logger, &alarm.LogNotifier{Log: logger}, &alarm.EmailNotifier{Log: logger})
+	// 告警通道：默认日志；按配置追加钉钉/企微/飞书 webhook + 邮件 SMTP（留空则不启用）
+	hc := &http.Client{Timeout: 5 * time.Second}
+	notifiers := []alarm.Notifier{&alarm.LogNotifier{Log: logger}}
+	if cfg.Alarm.Dingtalk != "" {
+		notifiers = append(notifiers, &alarm.WebhookNotifier{Platform: "dingtalk", URL: cfg.Alarm.Dingtalk, Client: hc, Log: logger})
+	}
+	if cfg.Alarm.Wechat != "" {
+		notifiers = append(notifiers, &alarm.WebhookNotifier{Platform: "wechat", URL: cfg.Alarm.Wechat, Client: hc, Log: logger})
+	}
+	if cfg.Alarm.Feishu != "" {
+		notifiers = append(notifiers, &alarm.WebhookNotifier{Platform: "feishu", URL: cfg.Alarm.Feishu, Client: hc, Log: logger})
+	}
+	if cfg.Alarm.Email.Host != "" {
+		notifiers = append(notifiers, &alarm.EmailNotifier{
+			Host: cfg.Alarm.Email.Host, Port: cfg.Alarm.Email.Port,
+			User: cfg.Alarm.Email.User, Password: cfg.Alarm.Email.Password,
+			From: cfg.Alarm.Email.From, To: strings.Split(cfg.Alarm.Email.To, ","), Log: logger,
+		})
+	}
+	alerter := alarm.NewMulti(logger, notifiers...)
 	block := trigger.NewBlockTracker()
 	trig := trigger.NewTrigger(st.DB(), reg, block, logger)
 	pool := scheduler.NewPool(200, 100, 500*time.Millisecond)

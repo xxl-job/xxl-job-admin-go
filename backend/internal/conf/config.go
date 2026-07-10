@@ -17,6 +17,7 @@ type Config struct {
 	JWT         JWTConfig    `mapstructure:"jwt"`
 	Lock        LockConfig   `mapstructure:"lock"`
 	Log         LogConfig    `mapstructure:"log"`
+	Alarm       AlarmConfig  `mapstructure:"alarm"`
 	NodeID      string       `mapstructure:"node_id"`
 	AccessToken string       `mapstructure:"access_token"` // 调度中心↔执行器通信认证
 }
@@ -51,6 +52,24 @@ type LockConfig struct {
 type LogConfig struct {
 	Level  string `mapstructure:"level"`
 	Format string `mapstructure:"format"`
+}
+
+// AlarmConfig 告警通道：留空则不启用该渠道（默认仅日志告警）。
+type AlarmConfig struct {
+	Dingtalk string     `mapstructure:"dingtalk"` // 钉钉机器人 webhook URL
+	Wechat   string     `mapstructure:"wechat"`   // 企业微信机器人 webhook URL
+	Feishu   string     `mapstructure:"feishu"`   // 飞书机器人 webhook URL
+	Email    EmailAlarm `mapstructure:"email"`
+}
+
+// EmailAlarm 邮件告警（SMTP）。
+type EmailAlarm struct {
+	Host     string `mapstructure:"host"` // SMTP 主机，如 smtp.qq.com
+	Port     int    `mapstructure:"port"` // 465(SSL)/587
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	From     string `mapstructure:"from"`
+	To       string `mapstructure:"to"` // 逗号分隔多个收件人
 }
 
 // Load 从 path 读取配置，环境变量以 `SECTION_KEY`（点转下划线、全大写）覆盖。

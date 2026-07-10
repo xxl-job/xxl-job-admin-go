@@ -208,7 +208,8 @@ func strconvFormatInt(n int64) string {
 	return string(buf[i:])
 }
 
-// TestRBAC_NonAdminForbidden 验证普通用户(role=0)写操作与敏感查询被 403 拒绝，普通查询放行。
+// TestRBAC_NonAdminForbidden 验证普通用户(role=0)任务按创建者隔离：
+// 可创建/管理自己的 job，不能触碰他人的 job（403）；executor/users/audit 仍仅管理员。
 func TestRBAC_NonAdminForbidden(t *testing.T) {
 	r, _ := setupTestRouter(t)
 	token, err := r.jwt.Sign(99, "normal", auth.RoleUser)
@@ -216,29 +217,53 @@ func TestRBAC_NonAdminForbidden(t *testing.T) {
 		t.Fatalf("sign token: %v", err)
 	}
 
-	// 写操作应 403
-	_, resp := doJSON(r, "POST", "/api/jobs", token, map[string]any{
-		"job_group": 1, "job_desc": "x", "schedule_type": 1, "schedule_conf": "0 * * * * ?",
+	// admin 先建一个 job 作为"他人任务"
+	_, resp := doJSON(r, "POST", "/api/auth/sessions", "", map[string]string{"username": "admin", "password": "123456"})
+	adminToken := resp["data"].(map[string]any)["accessToken"].(string)
+	_, resp = doJSON(r, "POST", "/api/jobs", adminToken, map[string]any{
+		"job_group": 1, "job_desc": "admin-job", "schedule_type": 1, "schedule_conf": "0 * * * * ?",
 		"executor_handler": "h", "executor_route_strategy": 1, "executor_block_strategy": 0,
 	})
-	assert.Equal(t, float64(403), resp["code"], "普通用户创建 job 应被拒绝")
+	assert.Equal(t, float64(0), resp["code"], "admin 建 job")
+	adminJobID := itoa(resp["data"].(map[string]any)["id"])
 
+	// 普通用户操作 admin 的 job → 403（owner 校验）
+	_, resp = doJSON(r, "DELETE", "/api/jobs/"+adminJobID, token, nil)
+	assert.Equal(t, float64(403), resp["code"], "普通用户删他人 job 应 403")
+	_, resp = doJSON(r, "POST", "/api/jobs/"+adminJobID+"/trigger", token, nil)
+	assert.Equal(t, float64(403), resp["code"], "普通用户触发他人 job 应 403")
+
+	// 普通用户建自己的 job → 成功（creator_id 自动填 99）
+	_, resp = doJSON(r, "POST", "/api/jobs", token, map[string]any{
+		"job_group": 1, "job_desc": "mine", "schedule_type": 1, "schedule_conf": "0 * * * * ?",
+		"executor_handler": "h", "executor_route_strategy": 1, "executor_block_strategy": 0,
+	})
+	assert.Equal(t, float64(0), resp["code"], "普通用户应能创建 job")
+	myJobID := itoa(resp["data"].(map[string]any)["id"])
+
+	// 普通用户触发自己的 job → 成功
+	_, resp = doJSON(r, "POST", "/api/jobs/"+myJobID+"/trigger", token, nil)
+	assert.Equal(t, float64(0), resp["code"], "普通用户应能触发自己的 job")
+
+	// 普通用户列表只见自己创建的（不含 admin 的 job）
+	_, resp = doJSON(r, "GET", "/api/jobs", token, nil)
+	assert.Equal(t, float64(0), resp["code"], "普通用户查 job 列表应放行")
+	list := resp["data"].(map[string]any)["list"].([]any)
+	assert.NotEmpty(t, list, "应至少有自己的 job")
+	for _, j := range list {
+		creator := j.(map[string]any)["creator_id"]
+		assert.Equal(t, float64(99), creator, "普通用户不应看到他人的 job")
+	}
+
+	// executor/users/audit 仍仅管理员
 	_, resp = doJSON(r, "DELETE", "/api/executors/1", token, nil)
 	assert.Equal(t, float64(403), resp["code"], "普通用户删 executor 应被拒绝")
-
-	// 用户管理应 403（普通用户不可见用户列表、不可建用户）
 	_, resp = doJSON(r, "GET", "/api/users", token, nil)
 	assert.Equal(t, float64(403), resp["code"], "普通用户查用户列表应被拒绝")
 	_, resp = doJSON(r, "POST", "/api/users", token, map[string]any{"username": "x", "password": "p", "role": 0})
 	assert.Equal(t, float64(403), resp["code"], "普通用户建用户应被拒绝")
-
-	// 审计查询应 403
 	_, resp = doJSON(r, "GET", "/api/audit", token, nil)
 	assert.Equal(t, float64(403), resp["code"], "普通用户查审计应被拒绝")
-
-	// 普通查询放行
-	_, resp = doJSON(r, "GET", "/api/jobs", token, nil)
-	assert.Equal(t, float64(0), resp["code"], "普通用户查 job 列表应放行")
 }
 
 // TestRBAC_AdminAllowed 验证 admin 写操作与敏感查询正常通过授权。

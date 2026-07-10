@@ -49,12 +49,30 @@ func (r *Router) auditMiddleware() gin.HandlerFunc {
 // 与 auth.HasPermission 的角色判定一致；普通用户调用写/管理接口将被拒绝。
 func (r *Router) requireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		role, ok := c.Get("role")
-		roleVal, isInt8 := role.(int8)
-		if !ok || !isInt8 || roleVal != auth.RoleAdmin {
+		if !isAdmin(c) {
 			c.AbortWithStatusJSON(http.StatusOK, gin.H{"code": 403, "data": nil, "msg": "需要管理员权限"})
 			return
 		}
 		c.Next()
 	}
+}
+
+// currentUID 从 context 取当前登录用户 ID（authMiddleware 注入）。
+func currentUID(c *gin.Context) uint64 {
+	if v, ok := c.Get("uid"); ok {
+		if u, ok := v.(uint64); ok {
+			return u
+		}
+	}
+	return 0
+}
+
+// isAdmin 当前用户是否管理员。
+func isAdmin(c *gin.Context) bool {
+	if v, ok := c.Get("role"); ok {
+		if r, ok := v.(int8); ok {
+			return r == auth.RoleAdmin
+		}
+	}
+	return false
 }

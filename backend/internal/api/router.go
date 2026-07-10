@@ -63,14 +63,15 @@ func (r *Router) Engine() *gin.Engine {
 		biz.GET("/logs", r.listLogs)
 		biz.GET("/dashboard", r.dashboard)
 
-		// 写操作与敏感查询：仅管理员（auth.RoleAdmin）
-		biz.POST("/jobs", r.requireAdmin(), r.createJob)
-		biz.PUT("/jobs/:id", r.requireAdmin(), r.updateJob)
-		biz.DELETE("/jobs/:id", r.requireAdmin(), r.deleteJob)
-		biz.POST("/jobs/:id/start", r.requireAdmin(), r.startJob)
-		biz.POST("/jobs/:id/stop", r.requireAdmin(), r.stopJob)
-		biz.POST("/jobs/:id/trigger", r.requireAdmin(), r.triggerJob)
+		// 任务：普通用户可管理自己创建的（handler 内按 creator_id 校验），管理员全部
+		biz.POST("/jobs", r.createJob)
+		biz.PUT("/jobs/:id", r.updateJob)
+		biz.DELETE("/jobs/:id", r.deleteJob)
+		biz.POST("/jobs/:id/start", r.startJob)
+		biz.POST("/jobs/:id/stop", r.stopJob)
+		biz.POST("/jobs/:id/trigger", r.triggerJob)
 
+		// 执行器/用户/审计：仅管理员
 		biz.POST("/executors", r.requireAdmin(), r.createExecutor)
 		biz.PUT("/executors/:id", r.requireAdmin(), r.updateExecutor)
 		biz.DELETE("/executors/:id", r.requireAdmin(), r.deleteExecutor)

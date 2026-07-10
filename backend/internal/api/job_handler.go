@@ -9,10 +9,19 @@ import (
 	"xxl-job-admin-go/internal/scheduler"
 )
 
+// assertJobOwner 校验当前用户对 job 的访问权：admin 放行，否则仅创建者。
+func assertJobOwner(c *gin.Context, job *model.Job) bool {
+	return isAdmin(c) || job.CreatorID == currentUID(c)
+}
+
 // listJobs GET /api/jobs?group=&page=&size=
+// 普通用户仅见自己创建的任务；管理员见全部。
 func (r *Router) listJobs(c *gin.Context) {
 	page, size := parsePagination(c)
 	q := r.db.Model(&model.Job{})
+	if !isAdmin(c) {
+		q = q.Where("creator_id = ?", currentUID(c))
+	}
 	if g := c.Query("group"); g != "" {
 		q = q.Where("job_group = ?", g)
 	}
@@ -36,10 +45,14 @@ func (r *Router) getJob(c *gin.Context) {
 		fail(c, 404, "job not found")
 		return
 	}
+	if !assertJobOwner(c, &job) {
+		fail(c, 403, "无权访问该任务")
+		return
+	}
 	ok(c, job)
 }
 
-// createJob POST /api/jobs
+// createJob POST /api/jobs —— creator_id 自动填当前用户。
 func (r *Router) createJob(c *gin.Context) {
 	var job model.Job
 	if err := c.ShouldBindJSON(&job); err != nil {
@@ -47,7 +60,8 @@ func (r *Router) createJob(c *gin.Context) {
 		return
 	}
 	job.ID = 0
-	job.TriggerStatus = 0 // 默认停止
+	job.TriggerStatus = 0            // 默认停止
+	job.CreatorID = currentUID(c)    // 创建者：当前登录用户
 	if err := r.db.Create(&job).Error; err != nil {
 		fail(c, 500, err.Error())
 		return
@@ -55,11 +69,15 @@ func (r *Router) createJob(c *gin.Context) {
 	ok(c, job)
 }
 
-// updateJob PUT /api/jobs/:id
+// updateJob PUT /api/jobs/:id —— 仅创建者或管理员。
 func (r *Router) updateJob(c *gin.Context) {
 	var job model.Job
 	if err := r.db.First(&job, c.Param("id")).Error; err != nil {
 		fail(c, 404, "job not found")
+		return
+	}
+	if !assertJobOwner(c, &job) {
+		fail(c, 403, "无权操作该任务")
 		return
 	}
 	var body model.Job
@@ -67,6 +85,9 @@ func (r *Router) updateJob(c *gin.Context) {
 		fail(c, 500, err.Error())
 		return
 	}
+	// 记录原调度配置，用于检测变更并热重算下次触发
+	oldSchedType := job.ScheduleType
+	oldSchedConf := job.ScheduleConf
 	job.JobDesc = body.JobDesc
 	job.JobGroup = body.JobGroup
 	job.ScheduleType = body.ScheduleType
@@ -98,6 +119,15 @@ func (r *Router) updateJob(c *gin.Context) {
 	}
 	job.GlueType = body.GlueType
 	job.GlueSource = body.GlueSource
+	// 调度配置热生效：运行中任务改 CRON/频率后重算下次触发（无需 stop/start）
+	if (job.ScheduleType != oldSchedType || job.ScheduleConf != oldSchedConf) && job.TriggerStatus == 1 {
+		next, err := scheduler.NextTriggerTime(job.ScheduleType, job.ScheduleConf, time.Now())
+		if err != nil {
+			fail(c, 500, "调度配置无效: "+err.Error())
+			return
+		}
+		job.TriggerNextTime = next
+	}
 	if err := r.db.Save(&job).Error; err != nil {
 		fail(c, 500, err.Error())
 		return
@@ -105,9 +135,18 @@ func (r *Router) updateJob(c *gin.Context) {
 	ok(c, job)
 }
 
-// deleteJob DELETE /api/jobs/:id
+// deleteJob DELETE /api/jobs/:id —— 仅创建者或管理员。
 func (r *Router) deleteJob(c *gin.Context) {
-	if err := r.db.Delete(&model.Job{}, c.Param("id")).Error; err != nil {
+	var job model.Job
+	if err := r.db.First(&job, c.Param("id")).Error; err != nil {
+		fail(c, 404, "job not found")
+		return
+	}
+	if !assertJobOwner(c, &job) {
+		fail(c, 403, "无权操作该任务")
+		return
+	}
+	if err := r.db.Delete(&job).Error; err != nil {
 		fail(c, 500, err.Error())
 		return
 	}
@@ -119,6 +158,10 @@ func (r *Router) startJob(c *gin.Context) {
 	var job model.Job
 	if err := r.db.First(&job, c.Param("id")).Error; err != nil {
 		fail(c, 404, "job not found")
+		return
+	}
+	if !assertJobOwner(c, &job) {
+		fail(c, 403, "无权操作该任务")
 		return
 	}
 	next, err := scheduler.NextTriggerTime(job.ScheduleType, job.ScheduleConf, time.Now())
@@ -136,9 +179,18 @@ func (r *Router) startJob(c *gin.Context) {
 	ok(c, gin.H{"trigger_next_time": next})
 }
 
-// stopJob POST /api/jobs/:id/stop
+// stopJob POST /api/jobs/:id/stop —— 仅创建者或管理员。
 func (r *Router) stopJob(c *gin.Context) {
-	if err := r.db.Model(&model.Job{}).Where("id = ?", c.Param("id")).Update("trigger_status", 0).Error; err != nil {
+	var job model.Job
+	if err := r.db.First(&job, c.Param("id")).Error; err != nil {
+		fail(c, 404, "job not found")
+		return
+	}
+	if !assertJobOwner(c, &job) {
+		fail(c, 403, "无权操作该任务")
+		return
+	}
+	if err := r.db.Model(&job).Update("trigger_status", 0).Error; err != nil {
 		fail(c, 500, "停止任务失败: "+err.Error())
 		return
 	}
@@ -152,14 +204,27 @@ func (r *Router) triggerJob(c *gin.Context) {
 		fail(c, 404, "job not found")
 		return
 	}
+	if !assertJobOwner(c, &job) {
+		fail(c, 403, "无权操作该任务")
+		return
+	}
 	go r.trig.Trigger(c.Request.Context(), &job)
 	ok(c, gin.H{"msg": "triggered"})
 }
 
 // listGlueVersions GET /api/jobs/:id/glue-versions —— GLUE 代码版本历史（最近 30）
 func (r *Router) listGlueVersions(c *gin.Context) {
+	var job model.Job
+	if err := r.db.First(&job, c.Param("id")).Error; err != nil {
+		fail(c, 404, "job not found")
+		return
+	}
+	if !assertJobOwner(c, &job) {
+		fail(c, 403, "无权访问该任务")
+		return
+	}
 	var versions []model.XxlJobLogGlue
-	if err := r.db.Where("job_id = ?", c.Param("id")).Order("id desc").Limit(30).Find(&versions).Error; err != nil {
+	if err := r.db.Where("job_id = ?", job.ID).Order("id desc").Limit(30).Find(&versions).Error; err != nil {
 		fail(c, 500, "查询 GLUE 版本失败: "+err.Error())
 		return
 	}

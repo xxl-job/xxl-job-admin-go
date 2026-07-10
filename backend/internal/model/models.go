@@ -48,7 +48,8 @@ type Job struct {
 	TriggerLastTime        int64     `gorm:"not null;default:0;column:trigger_last_time" json:"trigger_last_time"`                        // 毫秒
 	TriggerNextTime        int64     `gorm:"not null;default:0;column:trigger_next_time;index:idx_trigger,priority:2" json:"trigger_next_time"`
 	ChildJobID             string    `gorm:"size:256;not null;default:'';column:child_jobid" json:"child_jobid"`
-	Cluster                string    `gorm:"size:64;not null;default:'';column:cluster" json:"cluster"` // 流量泳道：指定发往的执行器 cluster，空=不限制
+	Cluster                string    `gorm:"size:64;not null;default:'';column:cluster" json:"cluster"`               // 流量泳道：指定发往的执行器 cluster，空=不限制
+	CreatorID              uint64    `gorm:"not null;default:0;column:creator_id;index:idx_creator" json:"creator_id"` // 创建者 user_id；普通用户仅见自己创建的任务，admin 见全部
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
 }

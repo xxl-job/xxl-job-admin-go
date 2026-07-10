@@ -68,7 +68,7 @@ const menus: RouteRecordRaw[] = [
     path: '/:catchAll(.*)*',
     name: 'catchAll',
     redirect: '/',
-    meta: {}
+    meta: { showMenu: false }
   }
 ]
 
