@@ -64,4 +64,20 @@
 
 ## GLUE 模式
 
-GLUE 类型任务可直接在页面编辑代码，系统保留最近 30 个版本（「GLUE 版本」查看历史）。
+GLUE 类型任务可直接在页面编辑代码，系统保留最近 30 个版本（「GLUE 版本」查看历史）。支持 Shell / Python / Go（yaegi 在线解释）三种类型。
+
+::: warning
+GLUE 默认关闭（执行器 `enable_script=false`）。在线代码有执行风险，仅在受控环境开启，详见根目录 `SECURITY.md`。
+:::
+
+## 场景示例
+
+| 场景 | 推荐配置 |
+|---|---|
+| 每天凌晨清理 | CRON `0 0 3 * * ?`（每天 3 点） |
+| 高频轮询 | 固定频率 `30`（每 30 秒）+ 路由轮询(3) |
+| 慢任务限频 | 固定延时 `60` + 阻塞丢弃(1) |
+| 父子编排 | 父任务 `child_jobid` 填子任务 ID，父成功后触发子 |
+| 大数据分片 | 路由分片广播(10)，每台执行器处理一片 |
+
+> 完整可导入示例（执行器分组 + 9 个示例任务 + GLUE 脚本）见仓库 [`backend/examples/`](https://github.com/xxl-job/xxl-job-admin-go/tree/main/backend/examples)：`mysql < seed-demo.sql` 一键导入。

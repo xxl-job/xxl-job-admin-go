@@ -142,6 +142,40 @@ readinessProbe:
 - **缩容**：缩掉 leader 时等待 ≤30s 租约过期后自动转移；建议滚动缩容。
 - **滚动更新**：逐个替换，确保任意时刻至少一个副本持租约，避免调度空窗。
 
+## 用户隔离与权限
+
+任务按创建者隔离：
+
+- **普通用户**：只见/管自己创建的任务（`creator_id`），可建任务（自动归属自己）。
+- **管理员**：见全部并管理所有任务。任务写操作（增删改/启停/触发）校验「管理员或创建者」，他人任务返回 403。
+- 执行器/用户/审计管理仍仅管理员。
+
+授予普通用户执行器可见权限：在「用户管理」编辑用户 `permission` 字段（逗号分隔的 `app_name`）。
+
+## 调度配置热生效
+
+运行中的任务修改 CRON / 固定频率 / 固定延时后，**最多 5s 生效，无需停止再启动**。调度器每 5s 用最新 DB 数据刷新内存时间轮，编辑时自动重算下次触发时间。
+
+## 告警通道
+
+任务失败时按 `alarm` 配置推送（默认仅日志告警）。在 `configs/config.yaml` 配置任一渠道即启用：
+
+```yaml
+alarm:
+  dingtalk: "https://oapi.dingtalk.com/robot/send?access_token=xxx"  # 钉钉
+  wechat:   "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx" # 企业微信
+  feishu:   "https://open.feishu.cn/open-apis/bot/v2/hook/xxx"          # 飞书
+  email:
+    host: "smtp.qq.com"
+    port: 465
+    user: "xxx@qq.com"
+    password: "SMTP 授权码"
+    from: "xxx@qq.com"
+    to: "ops@team.com,oncall@team.com"   # 逗号分隔多个收件人
+```
+
+留空则该渠道不启用；四类渠道可同时多渠道告警，单渠道失败不影响其他。
+
 ---
 
-相关：[部署指南](./design/deployment) · [架构设计](./design/architecture) · [执行器开发](./design/executor-dev)
+相关：[部署指南](./design/deployment) · [架构设计](./design/architecture) · [执行器开发](./design/executor-dev) · [场景示例](https://github.com/xxl-job/xxl-job-admin-go/tree/main/backend/examples)

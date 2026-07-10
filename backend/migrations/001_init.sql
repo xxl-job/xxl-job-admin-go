@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   trigger_next_time           BIGINT       NOT NULL DEFAULT 0,
   child_jobid                 VARCHAR(256) NOT NULL DEFAULT '',
   cluster                     VARCHAR(64)  NOT NULL DEFAULT '',    -- 流量泳道：目标执行器 cluster，空=不限制
+  creator_id                  BIGINT UNSIGNED NOT NULL DEFAULT 0,  -- 创建者 user_id；普通用户仅见自己创建的任务，admin 见全部
   created_at                  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at                  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
