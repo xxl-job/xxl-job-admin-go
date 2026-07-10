@@ -40,3 +40,24 @@ code {
   background-color: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
 }
+
+/* 业务页通用工具类（替代未引入的原子 CSS 框架，保持与 Element Plus 主题一致）*/
+.p-4 { padding: 16px; }
+.mb-1 { margin-bottom: 4px; }
+.mb-4 { margin-bottom: 16px; }
+.mr-1 { margin-right: 4px; }
+.mr-4 { margin-right: 16px; }
+.mt-2 { margin-top: 8px; }
+.mt-4 { margin-top: 16px; }
+.gap-2 { gap: 8px; }
+.gap-4 { gap: 16px; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.text-lg { font-size: 18px; }
+.text-sm { font-size: 13px; }
+.font-bold { font-weight: 600; }
+.text-gray-400 { color: var(--el-text-color-secondary); }
+.text-gray-500 { color: var(--el-text-color-secondary); }
+.text-gray-600 { color: var(--el-text-color-regular); }
+.text-blue-500 { color: var(--el-color-primary); }
