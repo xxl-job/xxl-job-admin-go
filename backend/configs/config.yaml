@@ -1,0 +1,42 @@
+# XXL-JOB-Admin-Go 配置
+# 环境变量可覆盖：SERVER_HTTP_ADDR、DB_DSN、JWT_SECRET 等（. → _，全大写）
+
+server:
+  http_addr: ":8080"   # Gin REST API（前端）+ Connect 协议
+  grpc_addr: ":9090"   # 纯 gRPC 端口（执行器 ExecutorLink 连接）
+
+db:
+  driver: mysql
+  dsn: "root:root@tcp(127.0.0.1:3306)/xxl_job?charset=utf8mb4&parseTime=True&loc=Local"
+  max_open_conns: 50
+  max_idle_conns: 10
+
+jwt:
+  # 占位符仅供模板展示，启动校验会拒绝该默认值；
+  # 务必用 JWT_SECRET 环境变量提供强密钥（≥16 字节，非 change-me-in-production/CHANGE_ME）。
+  secret: "change-me-in-production"
+  ttl: 24h
+
+lock:
+  lease_ttl: 30s        # leader 租约有效期
+  renew_interval: 10s   # leader 续约间隔
+
+log:
+  level: info
+  format: json          # json | console
+
+node_id: ""             # 留空则自动 hostname-pid
+access_token: ""        # 调度中心↔执行器认证令牌，为空则不校验
+
+# 告警通道：留空则不启用（默认仅日志告警）。环境变量覆盖如 ALARM_DINGTALK / ALARM_EMAIL_HOST
+alarm:
+  dingtalk: ""          # 钉钉机器人 webhook URL
+  wechat: ""            # 企业微信机器人 webhook URL
+  feishu: ""            # 飞书机器人 webhook URL
+  email:
+    host: ""            # SMTP 主机，如 smtp.qq.com（留空不发邮件）
+    port: 465
+    user: ""
+    password: ""
+    from: ""
+    to: ""              # 逗号分隔多个收件人
