@@ -8,10 +8,10 @@ hero:
   actions:
     - theme: brand
       text: 架构设计
-      link: /architecture
+      link: /design/architecture
     - theme: alt
       text: 部署指南
-      link: /deployment
+      link: /design/deployment
 
 features:
   - title: gRPC 调度
