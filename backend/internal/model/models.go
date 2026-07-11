@@ -73,6 +73,7 @@ type TaskRun struct {
 	ID                    uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
 	JobID                 uint64     `gorm:"not null;column:job_id;index:idx_job" json:"job_id"`
 	ExecutorAddress       string     `gorm:"size:128;not null;default:'';column:executor_address" json:"executor_address"`
+	ExecutorApp           string     `gorm:"size:64;not null;default:'';column:executor_app" json:"executor_app"`
 	ExecutorHandler       string     `gorm:"size:256;not null;default:'';column:executor_handler" json:"executor_handler"`
 	ExecutorParam         string     `gorm:"size:512;not null;default:'';column:executor_param" json:"executor_param"`
 	ExecutorShardingParam string     `gorm:"size:32;not null;default:'';column:executor_sharding_param" json:"executor_sharding_param"`

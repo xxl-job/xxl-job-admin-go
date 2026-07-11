@@ -18,6 +18,7 @@ import (
 	"xxl-job-admin-go/internal/alarm"
 	"xxl-job-admin-go/internal/api"
 	"xxl-job-admin-go/internal/auth"
+	"xxl-job-admin-go/internal/circuit"
 	"xxl-job-admin-go/internal/conf"
 	"xxl-job-admin-go/internal/logstream"
 	"xxl-job-admin-go/internal/pkg/lock"
@@ -84,6 +85,8 @@ func main() {
 	alerter := alarm.NewMulti(logger, notifiers...)
 	block := trigger.NewBlockTracker()
 	trig := trigger.NewTrigger(st.DB(), reg, block, logger)
+	breaker := circuit.New(5, 30*time.Second) // 连续 5 次失败熔断 30s，冷却后半开探测
+	trig.SetBreaker(breaker)
 	pool := scheduler.NewPool(200, 100, 500*time.Millisecond)
 	sched := scheduler.New(st.DB(), pool, trig, logger)
 
@@ -99,6 +102,7 @@ func main() {
 
 	// 7. RPC server（执行器连此端口）
 	execLink := rpc.NewExecutorLinkService(reg, st.DB(), trig, alerter, hub, logger)
+	execLink.SetBreaker(breaker)
 	adminSvc := rpc.NewAdminService(trig, st.DB())
 	rpcServer := &http.Server{
 		Addr:    cfg.Server.GRPCAddr,

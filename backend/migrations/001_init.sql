@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS task_runs (
   id                     BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   job_id                 BIGINT UNSIGNED NOT NULL,
   executor_address       VARCHAR(128) NOT NULL DEFAULT '',
+  executor_app           VARCHAR(64)  NOT NULL DEFAULT '',   -- 执行器 app_name（熔断按 app 维度）
   executor_handler       VARCHAR(256) NOT NULL DEFAULT '',
   executor_param         VARCHAR(512) NOT NULL DEFAULT '',
   executor_sharding_param VARCHAR(32) NOT NULL DEFAULT '',

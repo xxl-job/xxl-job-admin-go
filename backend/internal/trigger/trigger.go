@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
+	"xxl-job-admin-go/internal/circuit"
 	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
 	"xxl-job-admin-go/internal/metrics"
 	"xxl-job-admin-go/internal/model"
@@ -29,6 +30,7 @@ type Trigger struct {
 	reg     registry.Registry
 	routers *Routers
 	block   *BlockTracker
+	breaker *circuit.Breaker
 	log     *zap.Logger
 
 	retryMu    sync.Mutex
@@ -50,6 +52,9 @@ func NewTrigger(db *gorm.DB, reg registry.Registry, block *BlockTracker, log *za
 		runningConns: make(map[int64]*registry.ExecutorConn),
 	}
 }
+
+// SetBreaker 注入熔断器（按 app 维度，路由前 Allow）。
+func (t *Trigger) SetBreaker(b *circuit.Breaker) { t.breaker = b }
 
 // Trigger 实现 scheduler.Trigger，由调度循环调用。
 func (t *Trigger) Trigger(ctx context.Context, job *model.Job) {
@@ -145,6 +150,11 @@ func (t *Trigger) trigger(ctx context.Context, job *model.Job) error {
 	var exec model.Executor
 	if err := t.db.First(&exec, job.JobGroup).Error; err != nil {
 		return fmt.Errorf("find executor: %w", err)
+	}
+
+	// 熔断检查：app 级别，open 状态拒绝调度（避免持续向故障 app 投递）
+	if t.breaker != nil && !t.breaker.Allow(exec.AppName) {
+		return fmt.Errorf("app %q circuit breaker open", exec.AppName)
 	}
 
 	// 3. 路由（流量泳道：job 指定 cluster 时仅候选该 cluster 的执行器，否则全部）
@@ -260,6 +270,7 @@ func (t *Trigger) createTaskRun(job *model.Job, conn *registry.ExecutorConn, sha
 	run := &model.TaskRun{
 		JobID:           job.ID,
 		ExecutorAddress: conn.Address,
+		ExecutorApp:     conn.AppName,
 		ExecutorHandler: job.ExecutorHandler,
 		ExecutorParam:   job.ExecutorParam,
 		TriggerTime:     time.Now(),

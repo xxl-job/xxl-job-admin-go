@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 
 	"xxl-job-admin-go/internal/alarm"
+	"xxl-job-admin-go/internal/circuit"
 	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
 	"xxl-job-admin-go/internal/gen/xxl/v1/xxlv1connect"
 	"xxl-job-admin-go/internal/logstream"
@@ -38,6 +39,7 @@ type ExecutorLinkService struct {
 	db        *gorm.DB
 	completer TaskCompleter
 	alerter   alarm.Notifier
+	breaker   *circuit.Breaker
 	hub       *logstream.Hub
 	log       *zap.Logger
 }
@@ -46,6 +48,9 @@ type ExecutorLinkService struct {
 func NewExecutorLinkService(reg registry.Registry, db *gorm.DB, completer TaskCompleter, alerter alarm.Notifier, hub *logstream.Hub, log *zap.Logger) *ExecutorLinkService {
 	return &ExecutorLinkService{reg: reg, db: db, completer: completer, alerter: alerter, hub: hub, log: log}
 }
+
+// SetBreaker 注入熔断器（handleTaskResult 按结果更新 app 熔断状态）。
+func (s *ExecutorLinkService) SetBreaker(b *circuit.Breaker) { s.breaker = b }
 
 // Link 处理执行器长连接。
 func (s *ExecutorLinkService) Link(ctx context.Context, stream *connect.BidiStream[v1.ExecutorMessage, v1.AdminMessage]) error {
@@ -146,6 +151,9 @@ func (s *ExecutorLinkService) handleTaskResult(r *v1.TaskResult) {
 	}
 	if s.completer != nil && run.JobID != 0 {
 		s.completer.OnTaskDone(run.JobID, r.LogId, int16(r.HandleCode))
+	}
+	if s.breaker != nil && run.ExecutorApp != "" {
+		s.breaker.OnResult(run.ExecutorApp, r.HandleCode == 200)
 	}
 	if r.HandleCode != 200 {
 		metrics.TriggerFailTotal.WithLabelValues(run.ExecutorHandler).Inc()
