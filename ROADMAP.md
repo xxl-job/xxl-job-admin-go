@@ -35,8 +35,8 @@
 
 > zeus 框架经评估不引入（调度系统专用架构，通用微服务框架收益有限），缺失能力自研。
 
-- **熔断**：自研计数器熔断（≈50 行，参考 hystrix/zeus counter），按 `app` 维度
-- **限流**：基于 `golang.org/x/time/rate`
+- ~~**熔断**：自研计数器熔断，按 `app` 维度~~ ✅ 已完成（`circuit.Breaker`）
+- ~~**限流**：基于 `golang.org/x/time/rate`~~ ✅ 已完成（`limiter.Limiter`）
 - **链路追踪**：OpenTelemetry Go SDK
 - **泳道完整隔离**：熔断/限流按 `(app, cluster)` 维度
 - **refresh token 独立 + logout 吊销**：接入 session 存储（当前为已知限制）

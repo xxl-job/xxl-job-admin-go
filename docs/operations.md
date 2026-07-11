@@ -142,6 +142,17 @@ readinessProbe:
 
 确认 Prometheus 抓取目标指向 HTTP 端口（默认 `8080`）的 `/metrics`：`curl http://<pod-ip>:8080/metrics` 应返回文本。
 
+## 熔断与限流
+
+按 app 维度的服务治理（保护执行器不被故障/过载压垮）：
+
+| 能力 | 默认 | 行为 |
+|---|---|---|
+| 熔断 | 连续 5 次失败 → open 30s | open 期拒绝调度该 app；冷却后半开探测，成功→closed / 失败→reopen |
+| 限流 | 100 rps + burst 100 | 超 rps 的触发拒绝（下次调度再试） |
+
+两者均在 trigger 路由前校验（同位置），执行结果由 rpc `handleTaskResult` 反馈更新熔断状态。调参改 `cmd/server/main.go` 的 `circuit.New` / `limiter.New`。
+
 ## 扩缩容与接管
 
 - **扩容**：直接加副本，新副本竞争租约，未抢到则待机，对在途调度无影响。
