@@ -14,6 +14,7 @@ import (
 
 	"xxl-job-admin-go/internal/circuit"
 	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
+	"xxl-job-admin-go/internal/limiter"
 	"xxl-job-admin-go/internal/metrics"
 	"xxl-job-admin-go/internal/model"
 	"xxl-job-admin-go/internal/registry"
@@ -29,9 +30,10 @@ type Trigger struct {
 	db      *gorm.DB
 	reg     registry.Registry
 	routers *Routers
-	block   *BlockTracker
-	breaker *circuit.Breaker
-	log     *zap.Logger
+	block       *BlockTracker
+	breaker     *circuit.Breaker
+	rateLimiter *limiter.Limiter
+	log         *zap.Logger
 
 	retryMu    sync.Mutex
 	retryCount map[uint64]int16 // jobID → 当前已重试次数（成功后清除）
@@ -55,6 +57,9 @@ func NewTrigger(db *gorm.DB, reg registry.Registry, block *BlockTracker, log *za
 
 // SetBreaker 注入熔断器（按 app 维度，路由前 Allow）。
 func (t *Trigger) SetBreaker(b *circuit.Breaker) { t.breaker = b }
+
+// SetLimiter 注入限流器（按 app 维度，路由前 Allow）。
+func (t *Trigger) SetLimiter(l *limiter.Limiter) { t.rateLimiter = l }
 
 // Trigger 实现 scheduler.Trigger，由调度循环调用。
 func (t *Trigger) Trigger(ctx context.Context, job *model.Job) {
@@ -155,6 +160,9 @@ func (t *Trigger) trigger(ctx context.Context, job *model.Job) error {
 	// 熔断检查：app 级别，open 状态拒绝调度（避免持续向故障 app 投递）
 	if t.breaker != nil && !t.breaker.Allow(exec.AppName) {
 		return fmt.Errorf("app %q circuit breaker open", exec.AppName)
+	}
+	if t.rateLimiter != nil && !t.rateLimiter.Allow(exec.AppName) {
+		return fmt.Errorf("app %q rate limited", exec.AppName)
 	}
 
 	// 3. 路由（流量泳道：job 指定 cluster 时仅候选该 cluster 的执行器，否则全部）

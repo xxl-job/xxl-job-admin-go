@@ -20,6 +20,7 @@ import (
 	"xxl-job-admin-go/internal/auth"
 	"xxl-job-admin-go/internal/circuit"
 	"xxl-job-admin-go/internal/conf"
+	"xxl-job-admin-go/internal/limiter"
 	"xxl-job-admin-go/internal/logstream"
 	"xxl-job-admin-go/internal/pkg/lock"
 	"xxl-job-admin-go/internal/registry"
@@ -87,6 +88,8 @@ func main() {
 	trig := trigger.NewTrigger(st.DB(), reg, block, logger)
 	breaker := circuit.New(5, 30*time.Second) // 连续 5 次失败熔断 30s，冷却后半开探测
 	trig.SetBreaker(breaker)
+	rl := limiter.New(100, 100) // 每 app 100 rps + burst 100，保护执行器不被过载
+	trig.SetLimiter(rl)
 	pool := scheduler.NewPool(200, 100, 500*time.Millisecond)
 	sched := scheduler.New(st.DB(), pool, trig, logger)
 
