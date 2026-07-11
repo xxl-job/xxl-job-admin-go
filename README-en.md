@@ -49,6 +49,17 @@ deploy/       docker-compose.yml + k8s/ + grafana/
 
 ## Quick Start
 
+**Demo mode (one-click, recommended for first run)**: seeds sample jobs + starts an embedded executor — data is ready on startup (jobs/executors/logs/dashboard all populated).
+
+```bash
+cd deploy && JWT_SECRET="$(openssl rand -hex 32)" docker compose up -d   # MySQL first
+cd backend && JWT_SECRET=test-secret-0123456789abcdef \
+  DB_DSN="root:root@tcp(127.0.0.1:3306)/xxl_job?charset=utf8mb4&parseTime=True&loc=Local" \
+  go run ./cmd/server --demo
+```
+
+**Full setup**:
+
 ```bash
 # 1. Start MySQL + admin (compose file at deploy/)
 export JWT_SECRET="$(openssl rand -hex 32)"

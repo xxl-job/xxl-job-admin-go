@@ -73,6 +73,17 @@ deploy/       docker-compose.yml + k8s/
 
 ## 快速开始
 
+**demo 模式（一键体验，推荐首次）**：自动 seed 示例任务 + 启动内嵌执行器，启动即有数据可看（任务/执行器/日志/仪表盘）。
+
+```bash
+cd deploy && JWT_SECRET="$(openssl rand -hex 32)" docker compose up -d   # 先起 MySQL
+cd backend && JWT_SECRET=test-secret-0123456789abcdef \
+  DB_DSN="root:root@tcp(127.0.0.1:3306)/xxl_job?charset=utf8mb4&parseTime=True&loc=Local" \
+  go run ./cmd/server --demo
+```
+
+**完整启动**：
+
 ```bash
 # 1. 生成 proto 代码（在 backend/）
 cd backend && make proto

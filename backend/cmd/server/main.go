@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"net/http"
 	"os"
 	"os/signal"
@@ -31,6 +32,9 @@ import (
 )
 
 func main() {
+	demo := flag.Bool("demo", false, "demo 模式：seed 示例数据 + 内嵌执行器，开箱即用（生产勿用）")
+	flag.Parse()
+
 	// 1. 配置
 	cfgPath := "configs/config.yaml"
 	if p := os.Getenv("CONFIG_PATH"); p != "" {
@@ -102,6 +106,14 @@ func main() {
 		go trigger.RunDedupCleaner(leadCtx, st.DB(), logger)          // 仅 leader 清理触发去重
 		sched.Run(leadCtx)
 	})
+
+	// demo 模式：seed 示例数据 + 内嵌执行器连本机 gRPC（开箱即用，生产勿用）
+	if *demo {
+		if err := demoSeed(st.DB()); err != nil {
+			logger.Warn("demo seed", zap.Error(err))
+		}
+		go runDemoExecutor(ctx, logger)
+	}
 
 	// 7. RPC server（执行器连此端口）
 	execLink := rpc.NewExecutorLinkService(reg, st.DB(), trig, alerter, hub, logger)
