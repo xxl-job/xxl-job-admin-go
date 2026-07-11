@@ -6,6 +6,8 @@
 [![Vue](https://img.shields.io/badge/Vue-3.5-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
+[English](README-en.md) | 中文
+
 XXL-JOB 调度中心的 Go 现代化重实现。**不兼容** Java xxl-job 协议，采用 gRPC/ConnectRPC 长连接架构，无 Redis 依赖。
 
 ## 架构
