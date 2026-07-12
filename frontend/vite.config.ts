@@ -14,13 +14,16 @@ export default defineConfig({
   base,
   server: {
     host: true,
+    port: 5174,
+    strictPort: true,
     watch: { usePolling: true },
     hmr: true,
     proxy: {
       // admin REST API（登录、任务/执行器/日志 CRUD）
       '/api': {
         target: 'http://localhost:8080',
-        changeOrigin: true
+        changeOrigin: true,
+        ws: true
       },
       // ConnectRPC（执行器 + 未来前端 connect-web 直连）
       '/xxl.v1': {
