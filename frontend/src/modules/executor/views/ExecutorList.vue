@@ -2,13 +2,21 @@
   <div class="p-4">
     <div class="mb-4 flex justify-between items-center">
       <h2 class="text-lg font-bold">执行器管理</h2>
-      <el-button type="primary" @click="openCreate">新建执行器</el-button>
+      <div>
+        <el-button type="primary" @click="openCreate">新建执行器</el-button>
+        <el-button @click="load" :loading="loading">刷新</el-button>
+      </div>
     </div>
 
     <el-table :data="list" v-loading="loading" border stripe>
       <el-table-column prop="executor.id" label="ID" width="70" />
       <el-table-column prop="executor.app_name" label="AppName" width="160" />
-      <el-table-column prop="executor.title" label="标题" min-width="140" />
+      <el-table-column prop="executor.title" label="标题" min-width="140">
+        <template #default="{ row }">
+          {{ row.executor.title }}
+          <el-tag v-if="row.executor.id === 0" size="small" type="info" class="ml-1">未配置分组</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="注册方式" width="110">
         <template #default="{ row }">
           <el-tag :type="row.executor.address_type === 0 ? 'success' : 'warning'">
@@ -18,14 +26,19 @@
       </el-table-column>
       <el-table-column label="在线机器" min-width="220">
         <template #default="{ row }">
-          <el-tag v-for="addr in row.online" :key="addr" size="small" class="mr-1 mb-1" type="info">{{ addr }}</el-tag>
+          <el-badge :value="row.online?.length || 0" type="primary" class="mr-2">
+            <el-tag size="small">实例</el-tag>
+          </el-badge>
+          <el-tag v-for="addr in row.online" :key="addr" size="small" class="mr-1 mb-1" type="success">
+            <span class="dot-online">●</span>{{ addr }}
+          </el-tag>
           <span v-if="!row.online || row.online.length === 0" class="text-gray-400">无在线机器</span>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" @click="openEdit(row.executor)">编辑</el-button>
-          <el-button size="small" type="danger" @click="remove(row.executor)">删除</el-button>
+          <el-button size="small" :disabled="row.executor.id === 0" @click="openEdit(row.executor)">编辑</el-button>
+          <el-button size="small" type="danger" :disabled="row.executor.id === 0" @click="remove(row.executor)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -108,3 +121,7 @@ async function remove(row: any) {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.dot-online { color: #67c23a; margin-right: 2px; }
+</style>
