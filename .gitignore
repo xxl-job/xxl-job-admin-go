@@ -44,3 +44,7 @@ deploy/setup-docs-server.sh
 # 日志
 *.log
 /logs/
+
+# 前端 build 产物（生产由 Dockerfile 注入，本地勿提交）
+backend/internal/web/dist/*
+!backend/internal/web/dist/.gitkeep
