@@ -52,6 +52,9 @@ func MySQLQuery(ctx context.Context, jc *executor.JobContext, param string) (int
 		}
 		result = append(result, m)
 	}
+	if err := rows.Err(); err != nil {
+		return 500, "迭代失败: " + err.Error()
+	}
 	b, _ := json.Marshal(result)
 	jc.Log("查询返回 " + strconv.Itoa(len(result)) + " 行")
 	return 200, string(b)
