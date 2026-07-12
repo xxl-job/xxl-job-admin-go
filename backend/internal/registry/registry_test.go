@@ -52,3 +52,22 @@ func TestConnsByCluster(t *testing.T) {
 		t.Fatalf("after disconnect gray: got %d", len(got))
 	}
 }
+
+// TestApps 验证 Apps 返回所有在线 app 名（含多 app、断连清理）。
+func TestApps(t *testing.T) {
+	r := NewMemory()
+	r.OnConnect("app-a", "id1", &ExecutorConn{ID: "id1", AppName: "app-a", Address: "a1"})
+	r.OnConnect("app-b", "id2", &ExecutorConn{ID: "id2", AppName: "app-b", Address: "b1"})
+
+	got := r.Apps()
+	if len(got) != 2 {
+		t.Fatalf("Apps: got %d, want 2 (%+v)", len(got), got)
+	}
+
+	// app-a 全部断连后，应从 Apps 消失（OnConnect 内清理空 app 集合）
+	r.OnDisconnect("app-a", "id1")
+	got = r.Apps()
+	if len(got) != 1 || got[0] != "app-b" {
+		t.Fatalf("after disconnect: got %+v, want [app-b]", got)
+	}
+}

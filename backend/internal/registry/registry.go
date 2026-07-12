@@ -50,6 +50,7 @@ type Registry interface {
 	OnConnect(app, id string, c *ExecutorConn)
 	OnDisconnect(app, id string)
 	Addresses(app string) []string
+	Apps() []string
 	Conns(app string) []*ExecutorConn
 	ConnsByCluster(app, cluster string) []*ExecutorConn // 流量泳道：返回 app 下指定 cluster 的连接
 	UpdateLoad(app, id string, load LoadReport)
@@ -93,6 +94,17 @@ func (r *memoryRegistry) Addresses(app string) []string {
 	out := make([]string, 0, len(r.m[app]))
 	for _, c := range r.m[app] {
 		out = append(out, c.Address)
+	}
+	return out
+}
+
+// Apps 返回所有在线 app 名集合。
+func (r *memoryRegistry) Apps() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]string, 0, len(r.m))
+	for app := range r.m {
+		out = append(out, app)
 	}
 	return out
 }
