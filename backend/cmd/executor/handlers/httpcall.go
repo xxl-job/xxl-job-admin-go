@@ -52,7 +52,7 @@ func HTTPCall(ctx context.Context, jc *executor.JobContext, param string) (int, 
 	if err != nil {
 		return 500, "请求失败: " + err.Error()
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	b, _ := io.ReadAll(resp.Body)
 	jc.Log("HTTP " + p.Method + " " + p.URL + " -> " + resp.Status)
 	return resp.StatusCode, string(b)

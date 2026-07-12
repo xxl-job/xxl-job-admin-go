@@ -4,7 +4,9 @@ package handlers
 import "xxl-job-admin-go/pkg/executor"
 
 // Register 注册所有内置通用 handler。
-// Task 2 仅注册 httpCall；shellExec/mysqlQuery/sendWebhook 由 Task 3 追加。
 func Register(ex *executor.Executor) {
 	ex.Register("httpCall", HTTPCall)
+	ex.Register("shellExec", ShellExec)
+	ex.Register("mysqlQuery", MySQLQuery)
+	ex.Register("sendWebhook", SendWebhook)
 }
