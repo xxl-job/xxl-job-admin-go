@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/testcontainers/testcontainers-go/modules/mysql"
+	"go.uber.org/zap"
 	gormmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"go.uber.org/zap"
 
 	"xxl-job-admin-go/internal/alarm"
 	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
@@ -77,7 +77,10 @@ func (m *mockAlerter) Notify(_ context.Context, e alarm.Event) error {
 	m.notified = append(m.notified, e)
 	m.mu.Unlock()
 	if m.notifyCh != nil {
-		select { case m.notifyCh <- struct{}{}: default: }
+		select {
+		case m.notifyCh <- struct{}{}:
+		default:
+		}
 	}
 	return nil
 }

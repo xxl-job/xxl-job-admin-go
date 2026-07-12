@@ -73,7 +73,7 @@ func formatMessage(e Event) string {
 
 // WebhookNotifier 通用 webhook 告警（钉钉/企微/飞书 text 消息）。
 type WebhookNotifier struct {
-	Platform string        // dingtalk | wechat | feishu
+	Platform string // dingtalk | wechat | feishu
 	URL      string
 	Client   *http.Client
 	Log      *zap.Logger

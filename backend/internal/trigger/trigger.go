@@ -27,9 +27,9 @@ var timeNowNanos = func() int64 { return time.Now().UnixNano() }
 // Trigger 实现调度触发：创建日志 → 阻塞检查 → 路由 → 下发 TriggerTask。
 // 实现 scheduler.Trigger 接口与 rpc.TaskCompleter 接口。
 type Trigger struct {
-	db      *gorm.DB
-	reg     registry.Registry
-	routers *Routers
+	db          *gorm.DB
+	reg         registry.Registry
+	routers     *Routers
 	block       *BlockTracker
 	breaker     *circuit.Breaker
 	rateLimiter *limiter.Limiter
