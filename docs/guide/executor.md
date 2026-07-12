@@ -30,7 +30,7 @@
 
 ## 执行器开发
 
-如何用 Go 或其他语言编写执行器并连接调度中心，参考执行器 SDK（`internal/executor`）与下方内置 handler。
+如何用 Go 或其他语言编写执行器并连接调度中心，参考执行器 SDK（`pkg/executor`）与下方内置 handler。
 
 ## 内置 handler（executor 镜像）
 
