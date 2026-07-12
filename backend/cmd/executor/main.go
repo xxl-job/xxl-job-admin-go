@@ -27,7 +27,7 @@ func main() {
 	ex := executor.New(*addr, *app, *token, logger)
 	ex.WithScriptTask(true) // 镜像含 sh+python3，启用 Shell/Python GLUE 脚本
 
-	handlers.Register(ex) // 注册内置通用 handler（当前 httpCall，Task 3 追加其余）
+	handlers.Register(ex) // 注册内置通用 handler：httpCall/shellExec/mysqlQuery/sendWebhook
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

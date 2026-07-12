@@ -13,5 +13,5 @@ ENV TZ=Asia/Shanghai
 WORKDIR /app
 COPY --from=builder /app/xxl-job-executor .
 ENV ADMIN_ADDR=http://admin:9090 \
-    APP_NAME=default-executor
+    APP_NAME=default
 ENTRYPOINT ["./xxl-job-executor"]
