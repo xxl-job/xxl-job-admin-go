@@ -18,7 +18,6 @@ export default defineConfig({
       { text: '首页', link: '/' },
       { text: '快速开始', link: '/guide/getting-started' },
       { text: '运维', link: '/operations' },
-      { text: '设计', link: '/design/architecture' },
       { text: 'GitHub', link: 'https://github.com/xxl-job/xxl-job-admin-go' }
     ],
     sidebar: [
@@ -38,21 +37,18 @@ export default defineConfig({
         ]
       },
       {
+        text: '部署',
+        items: [
+          { text: '镜像部署', link: '/guide/docker-images' }
+        ]
+      },
+      {
         text: '系统管理',
         items: [{ text: '用户与权限', link: '/guide/user' }]
       },
       {
         text: '运维',
         items: [{ text: '运维与可观测', link: '/operations' }]
-      },
-      {
-        text: '设计参考',
-        items: [
-          { text: '架构设计', link: '/design/architecture' },
-          { text: '部署指南', link: '/design/deployment' },
-          { text: 'API 参考', link: '/design/api' },
-          { text: '执行器开发', link: '/design/executor-dev' }
-        ]
       }
     ],
     socialLinks: [

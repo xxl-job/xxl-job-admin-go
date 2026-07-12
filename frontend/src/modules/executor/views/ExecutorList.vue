@@ -1,14 +1,25 @@
 <template>
   <div class="p-4">
     <div class="mb-4 flex justify-between items-center">
-      <h2 class="text-lg font-bold">执行器管理</h2>
-      <el-button type="primary" @click="openCreate">新建执行器</el-button>
+      <div class="flex items-center gap-2">
+        <h2 class="text-lg font-bold mr-4">执行器管理</h2>
+        <el-input v-model="filterKw" placeholder="app_name/标题" style="width:200px" clearable />
+      </div>
+      <div>
+        <el-button type="primary" @click="openCreate">新建执行器</el-button>
+        <el-button @click="load" :loading="loading">刷新</el-button>
+      </div>
     </div>
 
-    <el-table :data="list" v-loading="loading" border stripe>
+    <el-table :data="filteredList" v-loading="loading" border stripe>
       <el-table-column prop="executor.id" label="ID" width="70" />
       <el-table-column prop="executor.app_name" label="AppName" width="160" />
-      <el-table-column prop="executor.title" label="标题" min-width="140" />
+      <el-table-column prop="executor.title" label="标题" min-width="140">
+        <template #default="{ row }">
+          {{ row.executor.title }}
+          <el-tag v-if="row.executor.id === 0" size="small" type="info" class="ml-1">未配置分组</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="注册方式" width="110">
         <template #default="{ row }">
           <el-tag :type="row.executor.address_type === 0 ? 'success' : 'warning'">
@@ -18,14 +29,20 @@
       </el-table-column>
       <el-table-column label="在线机器" min-width="220">
         <template #default="{ row }">
-          <el-tag v-for="addr in row.online" :key="addr" size="small" class="mr-1 mb-1" type="info">{{ addr }}</el-tag>
+          <el-badge :value="row.online?.length || 0" type="primary" class="mr-2">
+            <el-tag size="small">实例</el-tag>
+          </el-badge>
+          <el-tag v-for="addr in row.online" :key="addr" size="small" class="mr-1 mb-1" type="success"
+            style="cursor: pointer" :title="`点击复制 ${addr}`" @click="copyAddr(addr)">
+            <span class="dot-online">●</span>{{ fmtAddr(addr) }}
+          </el-tag>
           <span v-if="!row.online || row.online.length === 0" class="text-gray-400">无在线机器</span>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" @click="openEdit(row.executor)">编辑</el-button>
-          <el-button size="small" type="danger" @click="remove(row.executor)">删除</el-button>
+          <el-button size="small" :disabled="row.executor.id === 0" @click="openEdit(row.executor)">编辑</el-button>
+          <el-button size="small" type="danger" :disabled="row.executor.id === 0" @click="remove(row.executor)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -53,12 +70,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/lib/http/client'
 
 const list = ref<any[]>([])
 const loading = ref(false)
+const filterKw = ref('')
+const filteredList = computed(() => {
+  if (!filterKw.value) return list.value
+  const kw = filterKw.value.toLowerCase()
+  return list.value.filter((it: any) =>
+    (it.executor?.app_name || '').toLowerCase().includes(kw) ||
+    (it.executor?.title || '').toLowerCase().includes(kw))
+})
 const dialogVisible = ref(false)
 const editing = reactive<any>({ id: undefined, app_name: '', title: '', address_type: 0, address_list: '' })
 
@@ -69,6 +94,21 @@ async function load() {
     list.value = res.list || []
   } finally {
     loading.value = false
+  }
+}
+
+// fmtAddr 地址友好显示：[::1]:59659 -> localhost:59659；[ipv6]:port -> ipv6:port
+function fmtAddr(addr: string): string {
+  return addr.replace(/^\[::1\]/, 'localhost').replace(/^\[(.+)\]:(\d+)$/, '$1:$2')
+}
+
+// copyAddr 点击复制完整地址
+async function copyAddr(addr: string) {
+  try {
+    await navigator.clipboard.writeText(addr)
+    ElMessage.success('已复制: ' + addr)
+  } catch {
+    ElMessage.warning('复制失败，请手动选择')
   }
 }
 
@@ -108,3 +148,7 @@ async function remove(row: any) {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.dot-online { color: #67c23a; margin-right: 2px; }
+</style>

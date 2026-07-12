@@ -18,10 +18,10 @@ builds:
     goos: [linux, darwin]
     goarch: [amd64, arm64]
 
-  - id: executor-sample
+  - id: executor
     dir: backend
-    main: ./cmd/executor-sample
-    binary: xxl-job-executor-sample
+    main: ./cmd/executor
+    binary: xxl-job-executor
     env:
       - CGO_ENABLED=0
     goos: [linux, darwin]

@@ -472,7 +472,7 @@ const file_xxl_v1_common_proto_rawDesc = "" +
 	"\factive_tasks\x18\x01 \x01(\x05R\vactiveTasks\x12\x1b\n" +
 	"\tcpu_usage\x18\x02 \x01(\x01R\bcpuUsage\x12\x1f\n" +
 	"\vqueue_depth\x18\x03 \x01(\x05R\n" +
-	"queueDepthB,Z*xxl-job-admin-go/internal/gen/xxl/v1;xxlv1b\x06proto3"
+	"queueDepthB'Z%xxl-job-admin-go/pkg/gen/xxl/v1;xxlv1b\x06proto3"
 
 var (
 	file_xxl_v1_common_proto_rawDescOnce sync.Once

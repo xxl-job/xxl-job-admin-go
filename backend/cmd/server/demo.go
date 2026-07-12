@@ -8,9 +8,9 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
-	"xxl-job-admin-go/internal/executor"
 	"xxl-job-admin-go/internal/model"
 	"xxl-job-admin-go/internal/scheduler"
+	"xxl-job-admin-go/pkg/executor"
 )
 
 // demoSeed 插入示例执行器分组与任务（幂等，已存在则跳过）。

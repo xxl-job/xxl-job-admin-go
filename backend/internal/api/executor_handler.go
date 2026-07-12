@@ -11,12 +11,30 @@ import (
 )
 
 // listExecutors GET /api/executors
+// 合并视图：DB 分组 + 内存在线未分组 app（虚拟项 id=0）。
 func (r *Router) listExecutors(c *gin.Context) {
 	var exs []model.Executor
 	if err := r.db.Order("id desc").Find(&exs).Error; err != nil {
 		fail(c, 500, "查询执行器列表失败: "+err.Error())
 		return
 	}
+
+	// DB 已有的 app 集合
+	known := make(map[string]struct{}, len(exs))
+	for _, e := range exs {
+		known[e.AppName] = struct{}{}
+	}
+
+	// 内存在线但 DB 未配置的 app → 补虚拟项
+	for _, app := range r.reg.Apps() {
+		if _, ok := known[app]; ok {
+			continue
+		}
+		exs = append(exs, model.Executor{
+			ID: 0, AppName: app, Title: "(未配置)", AddressType: 0,
+		})
+	}
+
 	out := make([]gin.H, 0, len(exs))
 	for _, e := range exs {
 		out = append(out, gin.H{
@@ -85,6 +103,15 @@ func (r *Router) listLogs(c *gin.Context) {
 		q = q.Where("handle_code = ?", 200)
 	} else if s == "fail" {
 		q = q.Where("handle_code <> ? AND handle_code <> 0", 200)
+	}
+	if h := c.Query("handler"); h != "" {
+		q = q.Where("executor_handler LIKE ?", "%"+h+"%")
+	}
+	if st := c.Query("start_time"); st != "" {
+		q = q.Where("trigger_time >= ?", st)
+	}
+	if et := c.Query("end_time"); et != "" {
+		q = q.Where("trigger_time <= ?", et)
 	}
 	var total int64
 	if err := q.Count(&total).Error; err != nil {

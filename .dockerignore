@@ -1,0 +1,9 @@
+# Docker 构建上下文排除（admin/executor Dockerfile context 为 repo root）
+**/node_modules
+**/dist
+**/bin
+.git
+.claude
+.superpowers
+docs
+**/*.md

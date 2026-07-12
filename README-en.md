@@ -65,8 +65,8 @@ cd backend && JWT_SECRET=test-secret-0123456789abcdef \
 export JWT_SECRET="$(openssl rand -hex 32)"
 cd deploy && docker compose up -d
 
-# 2. Start sample executor (connects to admin, registers demoJob/slowJob)
-cd backend && go run ./cmd/executor-sample -app demo-app
+# 2. Start executor (connects to admin, built-in demoJob/slowJob handlers)
+cd backend && go run ./cmd/executor -addr http://localhost:9090 -app demo-app
 
 # 3. Start frontend
 cd frontend && pnpm install && pnpm dev   # http://localhost:5173
@@ -74,7 +74,7 @@ cd frontend && pnpm install && pnpm dev   # http://localhost:5173
 
 Login `admin / 123456` → Job Management → create job (app=`demo-app`, handler=`demoJob`, cron=`0/5 * * * * ?`) → start → view results in schedule logs.
 
-> One-line demo data import: `mysql < backend/examples/seed-demo.sql` (9 sample tasks + GLUE scripts).
+> Demo mode: run admin with `--demo` to auto-seed sample jobs + start an embedded executor (data ready on startup).
 
 ## API
 

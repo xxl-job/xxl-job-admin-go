@@ -27,6 +27,8 @@ log:
 
 node_id: ""             # 留空则自动 hostname-pid
 access_token: ""        # 调度中心↔执行器认证令牌，为空则不校验
+# task_runs 保留天数，0=关闭清理，缺省 30
+log_retain_days: 30
 
 # 告警通道：留空则不启用（默认仅日志告警）。环境变量覆盖如 ALARM_DINGTALK / ALARM_EMAIL_HOST
 alarm:

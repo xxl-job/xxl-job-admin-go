@@ -19,25 +19,30 @@ services:
       retries: 10
 
   admin:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
+    image: xxljob/xxl-job-admin:latest
     restart: unless-stopped
     environment:
       DB_DSN: "root:root@tcp(mysql:3306)/xxl_job?charset=utf8mb4&parseTime=True&loc=Local"
       SERVER_HTTP_ADDR: ":8080"
       SERVER_GRPC_ADDR: ":9090"
-      # JWT 密钥必须由部署者提供强密钥（≥16 字节，禁止占位符）；
-      # 未设置环境变量时 compose 拒绝启动（避免误用默认密钥）。
       JWT_SECRET: "${JWT_SECRET:?请通过环境变量或 .env 设置强 JWT_SECRET（≥16 字节）}"
       LOG_LEVEL: info
       LOG_FORMAT: json
     ports:
-      - "18080:8080"
+      - "8080:8080"
       - "9090:9090"
     depends_on:
       mysql:
         condition: service_healthy
+
+  executor:
+    image: xxljob/xxl-job-executor:latest
+    restart: unless-stopped
+    environment:
+      ADMIN_ADDR: http://admin:9090
+      APP_NAME: default
+    depends_on:
+      - admin
 
 volumes:
   mysql_data:

@@ -102,8 +102,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go runLease(ctx, locker, cfg, logger, func(leadCtx context.Context) {
-		go scheduler.RunPartitionMaintainer(leadCtx, st.DB(), logger) // 仅 leader 维护分区
-		go trigger.RunDedupCleaner(leadCtx, st.DB(), logger)          // 仅 leader 清理触发去重
+		go scheduler.RunPartitionMaintainer(leadCtx, st.DB(), logger)         // 仅 leader 维护分区
+		go trigger.RunDedupCleaner(leadCtx, st.DB(), logger)                  // 仅 leader 清理触发去重
+		go trigger.RunLogCleaner(leadCtx, st.DB(), cfg.LogRetainDays, logger) // 仅 leader 清理过期日志
 		sched.Run(leadCtx)
 	})
 

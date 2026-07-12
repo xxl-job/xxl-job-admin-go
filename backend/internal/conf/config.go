@@ -12,14 +12,15 @@ import (
 
 // Config 顶层配置结构。
 type Config struct {
-	Server      ServerConfig `mapstructure:"server"`
-	DB          DBConfig     `mapstructure:"db"`
-	JWT         JWTConfig    `mapstructure:"jwt"`
-	Lock        LockConfig   `mapstructure:"lock"`
-	Log         LogConfig    `mapstructure:"log"`
-	Alarm       AlarmConfig  `mapstructure:"alarm"`
-	NodeID      string       `mapstructure:"node_id"`
-	AccessToken string       `mapstructure:"access_token"` // 调度中心↔执行器通信认证
+	Server        ServerConfig `mapstructure:"server"`
+	DB            DBConfig     `mapstructure:"db"`
+	JWT           JWTConfig    `mapstructure:"jwt"`
+	Lock          LockConfig   `mapstructure:"lock"`
+	Log           LogConfig    `mapstructure:"log"`
+	Alarm         AlarmConfig  `mapstructure:"alarm"`
+	NodeID        string       `mapstructure:"node_id"`
+	AccessToken   string       `mapstructure:"access_token"`    // 调度中心↔执行器通信认证
+	LogRetainDays int          `mapstructure:"log_retain_days"` // task_runs 保留天数，0=不清理（缺省 30）
 }
 
 // ServerConfig HTTP/gRPC 监听地址。
@@ -84,6 +85,10 @@ func Load(path string) (*Config, error) {
 	var c Config
 	if err := v.Unmarshal(&c); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+	// log_retain_days 哨兵：未设置→默认 30；显式配置 0→真 0（关闭清理）
+	if !v.IsSet("log_retain_days") {
+		c.LogRetainDays = 30
 	}
 	if c.NodeID == "" {
 		hostname, _ := os.Hostname()

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package xxl.v1;
 
-option go_package = "xxl-job-admin-go/internal/gen/xxl/v1;xxlv1";
+option go_package = "xxl-job-admin-go/pkg/gen/xxl/v1;xxlv1";
 
 // 通用返回结构
 message ReturnT {

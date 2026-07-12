@@ -850,7 +850,7 @@ const file_xxl_v1_executor_proto_rawDesc = "" +
 	"\vTriggerTask\x12\x1a.xxl.v1.TriggerTaskRequest\x1a\x1b.xxl.v1.TriggerTaskResponse\x124\n" +
 	"\n" +
 	"StreamLogs\x12\x12.xxl.v1.LogRequest\x1a\x10.xxl.v1.LogChunk0\x01\x12@\n" +
-	"\x0fQueryTaskStatus\x12\x15.xxl.v1.StatusRequest\x1a\x16.xxl.v1.StatusResponseB,Z*xxl-job-admin-go/internal/gen/xxl/v1;xxlv1b\x06proto3"
+	"\x0fQueryTaskStatus\x12\x15.xxl.v1.StatusRequest\x1a\x16.xxl.v1.StatusResponseB'Z%xxl-job-admin-go/pkg/gen/xxl/v1;xxlv1b\x06proto3"
 
 var (
 	file_xxl_v1_executor_proto_rawDescOnce sync.Once

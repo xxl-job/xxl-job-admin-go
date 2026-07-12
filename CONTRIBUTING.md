@@ -22,8 +22,8 @@ make proto
 make up          # docker compose（compose 文件位于 ../deploy/）
 make run
 
-# 启动示例执行器
-go run ./cmd/executor-sample -addr http://localhost:9090 -app demo-app
+# 启动通用执行器
+go run ./cmd/executor -addr http://localhost:9090 -app demo-app
 
 # 启动前端
 cd ../frontend && pnpm install && pnpm dev

@@ -14,13 +14,13 @@ import (
 
 	"xxl-job-admin-go/internal/alarm"
 	"xxl-job-admin-go/internal/circuit"
-	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
-	"xxl-job-admin-go/internal/gen/xxl/v1/xxlv1connect"
 	"xxl-job-admin-go/internal/logstream"
 	"xxl-job-admin-go/internal/metrics"
 	"xxl-job-admin-go/internal/model"
 	"xxl-job-admin-go/internal/registry"
 	"xxl-job-admin-go/internal/trigger"
+	v1 "xxl-job-admin-go/pkg/gen/xxl/v1"
+	"xxl-job-admin-go/pkg/gen/xxl/v1/xxlv1connect"
 )
 
 // errNotImpl 占位错误。

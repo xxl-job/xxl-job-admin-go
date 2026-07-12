@@ -1,11 +1,14 @@
 <template>
   <div class="p-4">
     <div class="mb-4 flex justify-between items-center">
-      <h2 class="text-lg font-bold">用户管理</h2>
+      <div class="flex items-center gap-2">
+        <h2 class="text-lg font-bold mr-4">用户管理</h2>
+        <el-input v-model="filterKw" placeholder="用户名" style="width:200px" clearable />
+      </div>
       <el-button type="primary" @click="openCreate">新建用户</el-button>
     </div>
 
-    <el-table :data="list" v-loading="loading" border stripe>
+    <el-table :data="filteredList" v-loading="loading" border stripe>
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="username" label="用户名" width="160" />
       <el-table-column label="角色" width="100">
@@ -47,12 +50,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/lib/http/client'
 
 const list = ref<any[]>([])
 const loading = ref(false)
+const filterKw = ref('')
+const filteredList = computed(() => {
+  if (!filterKw.value) return list.value
+  const kw = filterKw.value.toLowerCase()
+  return list.value.filter((it: any) => (it.username || '').toLowerCase().includes(kw))
+})
 const dialogVisible = ref(false)
 const editing = reactive<any>({ id: undefined, username: '', password: '', role: 0, permission: '' })
 

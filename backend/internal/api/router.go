@@ -10,6 +10,7 @@ import (
 	"xxl-job-admin-go/internal/metrics"
 	"xxl-job-admin-go/internal/registry"
 	"xxl-job-admin-go/internal/trigger"
+	"xxl-job-admin-go/internal/web"
 )
 
 // Router 聚合 API 依赖。
@@ -57,10 +58,13 @@ func (r *Router) Engine() *gin.Engine {
 	{
 		// 查询：普通用户可读
 		biz.GET("/jobs", r.listJobs)
+		// preview-schedule 必须先于 /jobs/:id 注册，否则会被当作 :id 通配
+		biz.GET("/jobs/preview-schedule", r.previewSchedule)
 		biz.GET("/jobs/:id", r.getJob)
 		biz.GET("/jobs/:id/glue-versions", r.listGlueVersions)
 		biz.GET("/executors", r.listExecutors)
 		biz.GET("/logs", r.listLogs)
+		biz.POST("/logs/:id/cancel", r.cancelLog)
 		biz.GET("/dashboard", r.dashboard)
 
 		// 任务：普通用户可管理自己创建的（handler 内按 creator_id 校验），管理员全部
@@ -83,6 +87,9 @@ func (r *Router) Engine() *gin.Engine {
 		biz.PUT("/users/:id", r.requireAdmin(), r.updateUser)
 		biz.DELETE("/users/:id", r.requireAdmin(), r.deleteUser)
 	}
+
+	// 前端静态文件 + SPA fallback（go:embed）
+	web.RegisterStatic(e)
 
 	return e
 }
