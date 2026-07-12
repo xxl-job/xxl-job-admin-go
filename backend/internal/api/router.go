@@ -57,6 +57,8 @@ func (r *Router) Engine() *gin.Engine {
 	{
 		// 查询：普通用户可读
 		biz.GET("/jobs", r.listJobs)
+		// preview-schedule 必须先于 /jobs/:id 注册，否则会被当作 :id 通配
+		biz.GET("/jobs/preview-schedule", r.previewSchedule)
 		biz.GET("/jobs/:id", r.getJob)
 		biz.GET("/jobs/:id/glue-versions", r.listGlueVersions)
 		biz.GET("/executors", r.listExecutors)

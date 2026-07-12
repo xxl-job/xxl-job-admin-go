@@ -306,6 +306,26 @@ func TestRBAC_AdminAllowed(t *testing.T) {
 	assert.Equal(t, float64(0), resp["code"], "admin 查用户列表应通过")
 }
 
+// TestPreviewSchedule 验证 CRON 预览返回 5 个递增时间点；非法 conf 返回非 0 code。
+func TestPreviewSchedule(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	_, resp := doJSON(r, "POST", "/api/auth/sessions", "", map[string]string{"username": "admin", "password": "123456"})
+	token := resp["data"].(map[string]any)["accessToken"].(string)
+
+	_, resp = doJSON(r, "GET", "/api/jobs/preview-schedule?schedule_type=2&schedule_conf=60", token, nil)
+	assert.Equal(t, float64(0), resp["code"])
+	times := resp["data"].(map[string]any)["next_times"].([]any)
+	assert.Equal(t, 5, len(times), "应返回 5 个时间点")
+	// 递增
+	for i := 1; i < len(times); i++ {
+		assert.Greater(t, times[i], times[i-1])
+	}
+
+	// 非法 CRON
+	_, resp = doJSON(r, "GET", "/api/jobs/preview-schedule?schedule_type=1&schedule_conf=not-a-cron", token, nil)
+	assert.NotEqual(t, float64(0), resp["code"], "非法 conf 应失败")
+}
+
 // TestCancelLogPermission 验证：终止日志需 admin 或 job 创建者；他人 403。
 func TestCancelLogPermission(t *testing.T) {
 	r, _ := setupTestRouter(t)

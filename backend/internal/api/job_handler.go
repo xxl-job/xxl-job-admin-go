@@ -1,6 +1,7 @@
 package api
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -60,8 +61,8 @@ func (r *Router) createJob(c *gin.Context) {
 		return
 	}
 	job.ID = 0
-	job.TriggerStatus = 0            // 默认停止
-	job.CreatorID = currentUID(c)    // 创建者：当前登录用户
+	job.TriggerStatus = 0         // 默认停止
+	job.CreatorID = currentUID(c) // 创建者：当前登录用户
 	if err := r.db.Create(&job).Error; err != nil {
 		fail(c, 500, err.Error())
 		return
@@ -247,4 +248,27 @@ func (r *Router) listGlueVersions(c *gin.Context) {
 		return
 	}
 	ok(c, gin.H{"list": versions})
+}
+
+// previewSchedule GET /api/jobs/preview-schedule?schedule_type=&schedule_conf=
+// 返回接下来 5 次触发时间（unix 毫秒）。前端编辑调度配置时实时预览。
+func (r *Router) previewSchedule(c *gin.Context) {
+	st, _ := strconv.Atoi(c.Query("schedule_type"))
+	conf := c.Query("schedule_conf")
+	if st < 1 || st > 3 || conf == "" {
+		fail(c, 400, "schedule_type 与 schedule_conf 必填且合法")
+		return
+	}
+	nextTimes := make([]int64, 0, 5)
+	base := time.Now()
+	for i := 0; i < 5; i++ {
+		nx, err := scheduler.NextTriggerTime(int8(st), conf, base)
+		if err != nil {
+			fail(c, 400, "调度配置无效: "+err.Error())
+			return
+		}
+		nextTimes = append(nextTimes, nx)
+		base = time.UnixMilli(nx)
+	}
+	ok(c, gin.H{"next_times": nextTimes})
 }
