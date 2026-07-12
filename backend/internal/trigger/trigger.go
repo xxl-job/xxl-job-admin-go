@@ -335,6 +335,85 @@ func (t *Trigger) createTaskRun(job *model.Job, conn *registry.ExecutorConn, sha
 	return int64(run.ID)
 }
 
+// TriggerOnce 手动触发一次：paramOverride 非空则覆盖本次参数（不落库）；
+// addrOverride 非空则按地址精确匹配在线连接、绕过路由。
+// 跳过阻塞策略与触发幂等（手动一次性触发）。
+func (t *Trigger) TriggerOnce(ctx context.Context, job *model.Job, paramOverride, addrOverride string) error {
+	var exec model.Executor
+	if err := t.db.First(&exec, job.JobGroup).Error; err != nil {
+		t.recordTriggerFail(job, "", fmt.Sprintf("执行器分组 %d 未找到: %v", job.JobGroup, err))
+		return fmt.Errorf("find executor: %w", err)
+	}
+
+	param := job.ExecutorParam
+	if paramOverride != "" {
+		param = paramOverride
+	}
+
+	var conn *registry.ExecutorConn
+	if addrOverride != "" {
+		for _, c := range t.reg.Conns(exec.AppName) {
+			if c.Address == addrOverride {
+				conn = c
+				break
+			}
+		}
+		if conn == nil {
+			t.recordTriggerFail(job, addrOverride, fmt.Sprintf("指定地址 %s 不在 app %q 在线列表", addrOverride, exec.AppName))
+			return fmt.Errorf("address %s not online in app %q", addrOverride, exec.AppName)
+		}
+	} else {
+		conns := t.reg.Conns(exec.AppName)
+		if job.Cluster != "" {
+			conns = t.reg.ConnsByCluster(exec.AppName, job.Cluster)
+		}
+		if len(conns) == 0 {
+			t.recordTriggerFail(job, "", fmt.Sprintf("app %q cluster %q 无在线执行器", exec.AppName, job.Cluster))
+			return fmt.Errorf("no online executor for app %q cluster %q", exec.AppName, job.Cluster)
+		}
+		router := t.routers.Get(job.ExecutorRouteStrategy)
+		if router == nil {
+			return fmt.Errorf("unknown route strategy %d", job.ExecutorRouteStrategy)
+		}
+		targets := router.Route(job, conns)
+		if len(targets) == 0 {
+			return fmt.Errorf("router returned no target")
+		}
+		conn = targets[0]
+	}
+
+	// 临时参数构造一份 job 副本下发，不污染原对象
+	shadow := *job
+	shadow.ExecutorParam = param
+	logID := t.createTaskRunOnce(&shadow, conn)
+	if logID == 0 {
+		return fmt.Errorf("create task_run failed")
+	}
+	t.trackStart(job.ID, logID, conn)
+	t.dispatch(&shadow, conn, logID, 0, 1)
+	return nil
+}
+
+// createTaskRunOnce 手动触发用：不写 JobTriggerDedup（手动触发不应被 fire_second 拦截）。
+func (t *Trigger) createTaskRunOnce(job *model.Job, conn *registry.ExecutorConn) int64 {
+	run := &model.TaskRun{
+		JobID:           job.ID,
+		ExecutorAddress: conn.Address,
+		ExecutorApp:     conn.AppName,
+		ExecutorHandler: job.ExecutorHandler,
+		ExecutorParam:   job.ExecutorParam,
+		TriggerTime:     time.Now(),
+		TriggerCode:     200,
+		TriggerMsg:      fmt.Sprintf("手动触发, 路由=%d, 目标机器=%s", job.ExecutorRouteStrategy, conn.Address),
+	}
+	if err := t.db.Create(run).Error; err != nil {
+		t.log.Error("create task_run (once)", zap.Uint64("job_id", job.ID), zap.Error(err))
+		return 0
+	}
+	metrics.TriggerTotal.WithLabelValues(job.ExecutorHandler).Inc()
+	return int64(run.ID)
+}
+
 // RunDedupCleaner 周期清理过期的触发去重记录（保留最近 10 分钟），仅 leader 调用。
 func RunDedupCleaner(ctx context.Context, db *gorm.DB, log *zap.Logger) {
 	ticker := time.NewTicker(10 * time.Minute)

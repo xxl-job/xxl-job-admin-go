@@ -197,7 +197,8 @@ func (r *Router) stopJob(c *gin.Context) {
 	ok(c, nil)
 }
 
-// triggerJob POST /api/jobs/:id/trigger —— 手动触发一次。
+// triggerJob POST /api/jobs/:id/trigger —— 手动触发一次，支持临时参数与指定机器。
+// body 可选: { "executor_param": "...", "executor_address": "..." }
 func (r *Router) triggerJob(c *gin.Context) {
 	var job model.Job
 	if err := r.db.First(&job, c.Param("id")).Error; err != nil {
@@ -208,7 +209,24 @@ func (r *Router) triggerJob(c *gin.Context) {
 		fail(c, 403, "无权操作该任务")
 		return
 	}
-	go r.trig.Trigger(c.Request.Context(), &job)
+	var body struct {
+		ExecutorParam   string `json:"executor_param"`
+		ExecutorAddress string `json:"executor_address"`
+	}
+	_ = c.ShouldBindJSON(&body) // body 可空（兼容旧调用）
+
+	if body.ExecutorAddress != "" {
+		// 指定机器：同步返回结果（含错误），便于前端内联提示
+		if err := r.trig.TriggerOnce(c.Request.Context(), &job, body.ExecutorParam, body.ExecutorAddress); err != nil {
+			fail(c, 400, "触发失败: "+err.Error())
+			return
+		}
+		ok(c, gin.H{"msg": "triggered"})
+		return
+	}
+
+	// 自动路由：异步触发
+	go r.trig.TriggerOnce(c.Request.Context(), &job, body.ExecutorParam, "")
 	ok(c, gin.H{"msg": "triggered"})
 }
 
