@@ -58,7 +58,7 @@ func TestRecordTriggerFailWritesTaskRun(t *testing.T) {
 func TestDispatchQueueFullSingleRow(t *testing.T) {
 	db := newTestDB(t)
 	reg := registry.NewMemory()
-	send := make(chan *v1.AdminMessage, 0) // 容量 0 → 首次 Send 满即触发 default
+	send := make(chan *v1.AdminMessage) // 无缓冲 → 首次 Send 即触发 default
 	conn := &registry.ExecutorConn{ID: "e1", AppName: "app", Address: "a1", Send: send}
 	reg.OnConnect("app", "e1", conn)
 	trig := NewTrigger(db, reg, NewBlockTracker(), zap.NewNop())

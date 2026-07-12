@@ -226,8 +226,8 @@ func (r *Router) triggerJob(c *gin.Context) {
 		return
 	}
 
-	// 自动路由：异步触发
-	go r.trig.TriggerOnce(c.Request.Context(), &job, body.ExecutorParam, "")
+	// 自动路由：异步触发（TriggerOnce 内部失败已 recordTriggerFail，显式忽略返回值）
+	go func() { _ = r.trig.TriggerOnce(c.Request.Context(), &job, body.ExecutorParam, "") }()
 	ok(c, gin.H{"msg": "triggered"})
 }
 
