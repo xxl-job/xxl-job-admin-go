@@ -61,6 +61,7 @@ func (r *Router) Engine() *gin.Engine {
 		biz.GET("/jobs/:id/glue-versions", r.listGlueVersions)
 		biz.GET("/executors", r.listExecutors)
 		biz.GET("/logs", r.listLogs)
+		biz.POST("/logs/:id/cancel", r.cancelLog)
 		biz.GET("/dashboard", r.dashboard)
 
 		// 任务：普通用户可管理自己创建的（handler 内按 creator_id 校验），管理员全部

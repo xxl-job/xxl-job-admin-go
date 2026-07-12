@@ -305,3 +305,22 @@ func TestRBAC_AdminAllowed(t *testing.T) {
 	_, resp = doJSON(r, "GET", "/api/users", token, nil)
 	assert.Equal(t, float64(0), resp["code"], "admin 查用户列表应通过")
 }
+
+// TestCancelLogPermission 验证：终止日志需 admin 或 job 创建者；他人 403。
+func TestCancelLogPermission(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	token, _ := r.jwt.Sign(99, "normal", auth.RoleUser)
+
+	// admin 建 job + 触发产生 run
+	_, resp := doJSON(r, "POST", "/api/auth/sessions", "", map[string]string{"username": "admin", "password": "123456"})
+	adminToken := resp["data"].(map[string]any)["accessToken"].(string)
+	doJSON(r, "POST", "/api/jobs", adminToken, map[string]any{"job_group": 1, "job_desc": "j", "schedule_type": 1, "schedule_conf": "0 * * * * ?", "executor_handler": "h"})
+	// 直接造一条 run 归属 admin 的 job（id=1）
+	r.db.Create(&model.TaskRun{JobID: 1, ExecutorHandler: "h"})
+
+	_, resp = doJSON(r, "POST", "/api/logs/1/cancel", token, nil)
+	assert.Equal(t, float64(403), resp["code"], "普通用户终止他人 job 的日志应 403")
+
+	_, resp = doJSON(r, "POST", "/api/logs/1/cancel", adminToken, nil)
+	assert.Equal(t, float64(0), resp["code"], "admin 应放行")
+}

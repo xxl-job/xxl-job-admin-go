@@ -221,12 +221,21 @@ func (t *Trigger) trackDone(jobID uint64, logID int64) {
 // sendCancel 向执行器下发 CancelTask（cover-early 阻塞策略取消旧实例）。
 // 连接已断开或发送队列满时仅记录日志，不阻塞触发流程。
 func (t *Trigger) sendCancel(jobID uint64, logID int64) {
+	if !t.sendCancelByLogID(jobID, logID) {
+		t.log.Warn("cancel: no running conn", zap.Int64("log_id", logID))
+		return
+	}
+}
+
+// sendCancelByLogID 按 logID 取运行中连接并下发 CancelTask。
+// 命中且成功入队返回 true；无运行记录或队列满返回 false。供 sendCancel 与 CancelRun 复用。
+// jobID 在公开 CancelRun 路径传 0（仅按 logID 取消），内部 cover-early 路径传真实 jobID。
+func (t *Trigger) sendCancelByLogID(jobID uint64, logID int64) bool {
 	t.runConnMu.Lock()
 	conn := t.runningConns[logID]
 	t.runConnMu.Unlock()
 	if conn == nil {
-		t.log.Warn("cancel: no running conn", zap.Int64("log_id", logID))
-		return
+		return false
 	}
 	msg := &v1.AdminMessage{
 		Payload: &v1.AdminMessage_Cancel{
@@ -235,9 +244,16 @@ func (t *Trigger) sendCancel(jobID uint64, logID int64) {
 	}
 	select {
 	case conn.Send <- msg:
+		return true
 	default:
 		t.log.Warn("cancel: send queue full", zap.Int64("log_id", logID))
+		return false
 	}
+}
+
+// CancelRun 按 logID 终止运行中任务。命中且成功入队返回 true；无运行记录返回 false。
+func (t *Trigger) CancelRun(logID int64) bool {
+	return t.sendCancelByLogID(0, logID)
 }
 
 // dispatch 通过 conn.Send 下发 TriggerTask。发送队列满则放弃并回滚 OnStart。

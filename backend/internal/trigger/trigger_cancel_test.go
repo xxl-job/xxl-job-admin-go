@@ -62,3 +62,27 @@ func TestSendCancelNoRunningConn(t *testing.T) {
 	// 未 trackStart 直接 cancel，应仅记日志、不 panic
 	trig.sendCancel(1, 999)
 }
+
+// TestCancelRun 验证 CancelRun 命中运行中实例则下发 CancelTask 并返回 true；
+// 实例已结束则返回 false。
+func TestCancelRun(t *testing.T) {
+	trig := NewTrigger(nil, registry.NewMemory(), NewBlockTracker(), zap.NewNop())
+	send := make(chan *v1.AdminMessage, 4)
+	conn := &registry.ExecutorConn{ID: "e1", AppName: "app", Address: "a", Send: send}
+	trig.trackStart(1, 100, conn)
+
+	if !trig.CancelRun(100) {
+		t.Fatal("运行中应返回 true")
+	}
+	select {
+	case <-send:
+	default:
+		t.Fatal("应已下发 CancelTask")
+	}
+
+	// 同一 logID 再取消（仍未 trackDone）→ 再次 true；trackDone 后 false
+	trig.trackDone(1, 100)
+	if trig.CancelRun(100) {
+		t.Fatal("trackDone 后应返回 false")
+	}
+}
