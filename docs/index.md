@@ -7,11 +7,11 @@ hero:
   tagline: XXL-JOB 调度中心的 Go 现代化重实现 · gRPC 长连接调度 · MySQL 租约锁 · 无 Redis
   actions:
     - theme: brand
-      text: 架构设计
-      link: /design/architecture
+      text: 快速开始
+      link: /guide/getting-started
     - theme: alt
-      text: 部署指南
-      link: /design/deployment
+      text: 镜像部署
+      link: /guide/docker-images
 
 features:
   - title: gRPC 调度

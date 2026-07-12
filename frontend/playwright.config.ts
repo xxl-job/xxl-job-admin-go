@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test'
 
-// E2E 测试配置：默认指向本地 dev/preview (5173)，后端 REST 走 vite proxy 到 :18080。
+// E2E 测试配置：默认指向本地 dev/preview (5173)，后端 REST 走 vite proxy 到 :8080。
 // CI 通过 E2E_BASE_URL / E2E_SKIP_SERVER 环境变量覆盖。
 export default defineConfig({
   testDir: './e2e',

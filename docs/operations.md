@@ -195,4 +195,4 @@ alarm:
 
 ---
 
-相关：[部署指南](./design/deployment) · [架构设计](./design/architecture) · [执行器开发](./design/executor-dev) · [场景示例](https://github.com/xxl-job/xxl-job-admin-go/tree/main/backend/examples)
+相关：[镜像部署](./guide/docker-images) · [执行器管理](./guide/executor) · [场景示例](https://github.com/xxl-job/xxl-job-admin-go/tree/main/backend/examples)

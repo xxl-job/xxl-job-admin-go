@@ -32,7 +32,7 @@ XXL-JOB 调度中心的 Go 现代化重实现。**不兼容** Java xxl-job 协�
                        ▲  gRPC 长连接（注册/心跳/结果/日志/负载）  │
             ┌──────────┴──────────────────────────────────┴─┐
             │              执行器集群（gRPC SDK）            │
-            │   Go 执行器（internal/executor + cmd/sample） │
+            │   Go 执行器（internal/executor + cmd/executor） │
             └───────────────────────────────────────────────┘
                        ▲  RESTful API + WebSocket
                 ┌──────┴──────┐
@@ -62,12 +62,12 @@ XXL-JOB 调度中心的 Go 现代化重实现。**不兼容** Java xxl-job 协�
 
 ```
 backend/      Go 调度中心 + 执行器 SDK
-  cmd/server  cmd/executor-sample
+  cmd/server  cmd/executor
   internal/   conf model store pkg/lock registry scheduler trigger
               rpc api auth alarm metrics logstream executor gen
   proto/xxl/v1/   migrations/   configs/
 frontend/     vue-admin（Vue3 + Vite + TS + Element-Plus + Pinia）
-docs/         design/（架构/API 文档）+ VitePress 文档站源码
+docs/         VitePress 文档站源码（guide/operations）
 deploy/       docker-compose.yml + k8s/
 ```
 
@@ -91,8 +91,8 @@ cd backend && make proto
 # 2. 启动 MySQL + admin（在 backend/，compose 文件位于 deploy/）
 cd backend && make up
 
-# 3. 启动示例执行器（连 admin，注册 demoJob/slowJob）
-cd backend && go run ./cmd/executor-sample -addr http://localhost:9090 -app demo-app
+# 3. 启动通用执行器（连 admin，内置 demoJob/slowJob 等 handler）
+cd backend && go run ./cmd/executor -addr http://localhost:9090 -app demo-app
 
 # 4. 启动前端
 cd frontend && pnpm install && pnpm dev   # http://localhost:5173
@@ -144,7 +144,7 @@ cd frontend && pnpm install && pnpm dev   # http://localhost:5173
 ## 验证状态
 
 - 代码层：`go build` / `go vet` / `go test` / `buf lint` 全通过
-- 二进制：`bin/xxl-job-admin-go`（36M）+ `bin/xxl-executor-sample`（12M）
+- 二进制：`bin/xxl-job-admin-go`（36M）+ `bin/xxl-job-executor`（12M）
 - 前端：`pnpm dev` 启动正常，任务/执行器/日志/审计/用户/仪表盘路由全 HTTP 200
 - 端到端运行：受构建环境网络限制（docker hub / github 不可达，本地无 MySQL）未实跑，需在可用环境验证
 

@@ -80,4 +80,4 @@ GLUE 默认关闭（执行器 `enable_script=false`）。在线代码有执行�
 | 父子编排 | 父任务 `child_jobid` 填子任务 ID，父成功后触发子 |
 | 大数据分片 | 路由分片广播(10)，每台执行器处理一片 |
 
-> 完整可导入示例（执行器分组 + 9 个示例任务 + GLUE 脚本）见仓库 [`backend/examples/`](https://github.com/xxl-job/xxl-job-admin-go/tree/main/backend/examples)：`mysql < seed-demo.sql` 一键导入。
+> 示例任务（CRON/固定频率/父子编排等）可通过 `--demo` 启动 admin 自动 seed，或参考 [`backend/examples/`](https://github.com/xxl-job/xxl-job-admin-go/tree/main/backend/examples) 的 GLUE 脚本。
