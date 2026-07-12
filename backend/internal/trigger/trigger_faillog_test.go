@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
+	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
 	"xxl-job-admin-go/internal/model"
 	"xxl-job-admin-go/internal/registry"
 )
@@ -50,4 +51,34 @@ func TestRecordTriggerFailWritesTaskRun(t *testing.T) {
 		t.Fatalf("失败记录不应写 dedup，got %d", dedup)
 	}
 	_ = time.Now
+}
+
+// TestDispatchQueueFullSingleRow 验证 dispatch 发送队列满时，markTriggerFail 原地更新已有 200 行，
+// 不插入第二条记录。
+func TestDispatchQueueFullSingleRow(t *testing.T) {
+	db := newTestDB(t)
+	reg := registry.NewMemory()
+	send := make(chan *v1.AdminMessage, 0) // 容量 0 → 首次 Send 满即触发 default
+	conn := &registry.ExecutorConn{ID: "e1", AppName: "app", Address: "a1", Send: send}
+	reg.OnConnect("app", "e1", conn)
+	trig := NewTrigger(db, reg, NewBlockTracker(), zap.NewNop())
+
+	// 手动建一条 200 记录（模拟 createTaskRun 已成功）
+	run := &model.TaskRun{JobID: 5, ExecutorAddress: "a1", ExecutorApp: "app",
+		ExecutorHandler: "h", ExecutorParam: "p", TriggerTime: time.Now(), TriggerCode: 200}
+	db.Create(run)
+	logID := int64(run.ID)
+
+	trig.trackStart(5, logID, conn)
+	job := &model.Job{ID: 5}
+	trig.dispatch(job, conn, logID, 0, 1) // send 队列满 → markTriggerFail
+
+	var rows []model.TaskRun
+	db.Find(&rows)
+	if len(rows) != 1 {
+		t.Fatalf("应只有 1 条记录，got %d", len(rows))
+	}
+	if rows[0].TriggerCode != 500 {
+		t.Fatalf("应更新为 500，got %d", rows[0].TriggerCode)
+	}
 }

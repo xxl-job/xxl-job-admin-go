@@ -262,8 +262,22 @@ func (t *Trigger) dispatch(job *model.Job, conn *registry.ExecutorConn, logID in
 	case conn.Send <- msg:
 	default:
 		t.log.Warn("executor send queue full", zap.Uint64("job_id", job.ID), zap.String("addr", conn.Address))
-		t.recordTriggerFail(job, conn.Address, "执行器发送队列已满")
+		t.markTriggerFail(logID, "执行器发送队列已满")
 		t.trackDone(job.ID, logID)
+	}
+}
+
+// markTriggerFail 将已创建的 TaskRun(logID) 标记为触发失败（trigger_code=500）。
+// 用于 dispatch 发送队列满等"已建日志但下发失败"的场景，原地更新避免双行。
+func (t *Trigger) markTriggerFail(logID int64, reason string) {
+	if logID == 0 {
+		return
+	}
+	if err := t.db.Model(&model.TaskRun{}).Where("id = ?", logID).Updates(map[string]any{
+		"trigger_code": int16(500),
+		"trigger_msg":  fmt.Sprintf("触发失败: %s", reason),
+	}).Error; err != nil {
+		t.log.Error("mark trigger fail", zap.Int64("log_id", logID), zap.Error(err))
 	}
 }
 
