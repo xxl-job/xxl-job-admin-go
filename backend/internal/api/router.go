@@ -10,6 +10,7 @@ import (
 	"xxl-job-admin-go/internal/metrics"
 	"xxl-job-admin-go/internal/registry"
 	"xxl-job-admin-go/internal/trigger"
+	"xxl-job-admin-go/internal/web"
 )
 
 // Router 聚合 API 依赖。
@@ -86,6 +87,9 @@ func (r *Router) Engine() *gin.Engine {
 		biz.PUT("/users/:id", r.requireAdmin(), r.updateUser)
 		biz.DELETE("/users/:id", r.requireAdmin(), r.deleteUser)
 	}
+
+	// 前端静态文件 + SPA fallback（go:embed）
+	web.RegisterStatic(e)
 
 	return e
 }
