@@ -164,12 +164,16 @@ func (t *tokenAuth) WrapStreamingHandler(next connect.StreamingHandlerFunc) conn
 }
 
 func (e *Executor) runOnce(ctx context.Context) error {
+	// runCtx 绑定本次连接生命周期：runOnce 返回时取消，停止心跳 goroutine（修复旧版心跳跨重连泄漏）。
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	opts := []connect.ClientOption{connect.WithGRPC()}
 	if e.accessToken != "" {
 		opts = append(opts, connect.WithInterceptors(tokenInterceptor(e.accessToken)))
 	}
 	client := xxlv1connect.NewExecutorLinkClient(newH2CClient(), e.serverAddr, opts...)
-	stream := client.Link(ctx)
+	stream := client.Link(runCtx)
 
 	// 1. 注册
 	e.mu.RLock()
@@ -193,7 +197,7 @@ func (e *Executor) runOnce(ctx context.Context) error {
 		defer t.Stop()
 		for {
 			select {
-			case <-ctx.Done():
+			case <-runCtx.Done():
 				return
 			case <-t.C:
 				_ = e.send(stream, &v1.ExecutorMessage{Payload: &v1.ExecutorMessage_Heartbeat{
@@ -223,6 +227,7 @@ func (e *Executor) runOnce(ctx context.Context) error {
 }
 
 // handleTrigger 执行任务并回传结果，支持超时、取消与日志回传。
+// 结果唯一发送点：runWithTimeout 返回唯一 (code,msg)，handleTrigger 末尾发送一次。
 func (e *Executor) handleTrigger(ctx context.Context, stream linkStream, t *v1.TriggerTask) {
 	taskCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -230,24 +235,47 @@ func (e *Executor) handleTrigger(ctx context.Context, stream linkStream, t *v1.T
 	defer e.unregisterRun(t.LogId)
 
 	jc := &JobContext{LogID: t.LogId, sender: func(m *v1.ExecutorMessage) { _ = e.send(stream, m) }}
-	done := make(chan struct{})
+	code, msg := e.runWithTimeout(taskCtx, cancel, jc, t)
+	jc.Log("[result] code=" + strconv.Itoa(code) + " msg=" + msg)
+	_ = e.send(stream, resultMsg(t.LogId, int32(code), msg))
+}
+
+// runWithTimeout 执行任务并返回唯一结果：超时返回 500/timeout，否则返回 handler 结果。
+// 修复旧版超时后 handler 仍发第二条结果的双结果 bug：done 缓冲为 1，超时后 ctx 取消使
+// handler goroutine 走 Done 分支丢弃结果。handler 不响应 ctx 时给 2s 宽限期等待退出，
+// 超宽限则放弃等待（记录泄漏），但结果仍为唯一 timeout。
+func (e *Executor) runWithTimeout(taskCtx context.Context, cancel context.CancelFunc, jc *JobContext, t *v1.TriggerTask) (int, string) {
+	type result struct {
+		code int
+		msg  string
+	}
+	done := make(chan result, 1) // buffered：handler 返回后即使无人接收也不阻塞
 	go func() {
-		defer close(done)
-		code, msg := e.executeTask(taskCtx, jc, t)
-		jc.Log("[result] code=" + strconv.Itoa(code) + " msg=" + msg)
-		_ = e.send(stream, resultMsg(t.LogId, int32(code), msg))
+		c, m := e.executeTask(taskCtx, jc, t)
+		select {
+		case done <- result{c, m}:
+		case <-taskCtx.Done(): // 已超时或被取消，丢弃结果避免第二结果
+		}
 	}()
+
 	if t.ExecutorTimeout > 0 {
 		select {
-		case <-done:
+		case r := <-done:
+			return r.code, r.msg
 		case <-time.After(time.Duration(t.ExecutorTimeout) * time.Second):
 			cancel()
 			jc.Log("[timeout] 任务超时中断")
-			_ = e.send(stream, resultMsg(t.LogId, 500, "timeout"))
+			// 等 handler 退出（宽限 2s），避免 goroutine 永久泄漏；handler 应响应 ctx
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				e.log.Warn("handler 未响应 ctx 取消，放弃等待", zap.Int64("log_id", t.LogId))
+			}
+			return 500, "timeout"
 		}
-	} else {
-		<-done
 	}
+	r := <-done
+	return r.code, r.msg
 }
 
 // registerRun/unregisterRun/cancelRun 维护运行中任务的取消函数。
