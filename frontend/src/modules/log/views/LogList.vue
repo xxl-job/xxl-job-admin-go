@@ -1,13 +1,18 @@
 <template>
   <div class="p-4">
-    <div class="mb-4 flex items-center gap-2">
+    <div class="mb-4 flex items-center gap-2 flex-wrap">
       <h2 class="text-lg font-bold mr-4">调度日志</h2>
       <el-input v-model="jobId" placeholder="任务ID" style="width: 130px" clearable />
+      <el-input v-model="searchHandler" placeholder="Handler" style="width: 160px" clearable />
       <el-select v-model="status" placeholder="状态" style="width: 120px" clearable>
         <el-option value="success" label="成功" />
         <el-option value="fail" label="失败" />
       </el-select>
-      <el-button type="primary" @click="load">查询</el-button>
+      <el-date-picker v-model="timeRange" type="datetimerange" range-separator="至"
+        start-placeholder="开始时间" end-placeholder="结束时间"
+        value-format="YYYY-MM-DD HH:mm:ss" style="width:360px" />
+      <el-button type="primary" @click="onSearch">查询</el-button>
+      <el-button @click="onReset">重置</el-button>
     </div>
 
     <el-table :data="list" v-loading="loading" border stripe>
@@ -102,17 +107,29 @@ async function cancelRun(row: any) {
   }
 }
 
+const searchHandler = ref('')
+const timeRange = ref<string[]>([])
+
 async function load() {
   loading.value = true
   try {
-    const res = await api.get<any>('/api/logs', {
-      params: { page: page.value, size: size.value, job_id: jobId.value, status: status.value }
-    })
+    const params: any = { page: page.value, size: size.value, job_id: jobId.value, status: status.value, handler: searchHandler.value }
+    if (timeRange.value && timeRange.value.length === 2) {
+      params.start_time = timeRange.value[0]
+      params.end_time = timeRange.value[1]
+    }
+    const res = await api.get<any>('/api/logs', { params })
     list.value = res.list || []
     total.value = res.total || 0
   } finally {
     loading.value = false
   }
+}
+
+function onSearch() { page.value = 1; load() }
+function onReset() {
+  jobId.value = ''; searchHandler.value = ''; status.value = ''; timeRange.value = []
+  page.value = 1; load()
 }
 
 function openLogStream(row: any) {

@@ -1,6 +1,12 @@
 <template>
   <div class="p-4">
-    <h2 class="text-lg font-bold mb-4">审计日志</h2>
+    <div class="mb-4 flex items-center gap-2">
+      <h2 class="text-lg font-bold mr-4">审计日志</h2>
+      <el-input v-model="searchActor" placeholder="操作人" style="width:160px" clearable @keyup.enter="onSearch" />
+      <el-input v-model="searchAction" placeholder="操作" style="width:180px" clearable @keyup.enter="onSearch" />
+      <el-button type="primary" @click="onSearch">查询</el-button>
+      <el-button @click="onReset">重置</el-button>
+    </div>
     <el-table :data="list" v-loading="loading" border stripe>
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="actor" label="操作人" width="120" />
@@ -36,16 +42,22 @@ function fmt(t: string): string {
   return t ? new Date(t).toLocaleString() : ''
 }
 
+const searchActor = ref('')
+const searchAction = ref('')
+
 async function load() {
   loading.value = true
   try {
-    const res = await api.get<any>('/api/audit', { params: { page: page.value, size: size.value } })
+    const res = await api.get<any>('/api/audit', { params: { page: page.value, size: size.value, actor: searchActor.value, action: searchAction.value } })
     list.value = res.list || []
     total.value = res.total || 0
   } finally {
     loading.value = false
   }
 }
+
+function onSearch() { page.value = 1; load() }
+function onReset() { searchActor.value = ''; searchAction.value = ''; page.value = 1; load() }
 
 onMounted(load)
 </script>

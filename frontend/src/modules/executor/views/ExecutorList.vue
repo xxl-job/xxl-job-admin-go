@@ -1,14 +1,17 @@
 <template>
   <div class="p-4">
     <div class="mb-4 flex justify-between items-center">
-      <h2 class="text-lg font-bold">执行器管理</h2>
+      <div class="flex items-center gap-2">
+        <h2 class="text-lg font-bold mr-4">执行器管理</h2>
+        <el-input v-model="filterKw" placeholder="app_name/标题" style="width:200px" clearable />
+      </div>
       <div>
         <el-button type="primary" @click="openCreate">新建执行器</el-button>
         <el-button @click="load" :loading="loading">刷新</el-button>
       </div>
     </div>
 
-    <el-table :data="list" v-loading="loading" border stripe>
+    <el-table :data="filteredList" v-loading="loading" border stripe>
       <el-table-column prop="executor.id" label="ID" width="70" />
       <el-table-column prop="executor.app_name" label="AppName" width="160" />
       <el-table-column prop="executor.title" label="标题" min-width="140">
@@ -67,12 +70,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/lib/http/client'
 
 const list = ref<any[]>([])
 const loading = ref(false)
+const filterKw = ref('')
+const filteredList = computed(() => {
+  if (!filterKw.value) return list.value
+  const kw = filterKw.value.toLowerCase()
+  return list.value.filter((it: any) =>
+    (it.executor?.app_name || '').toLowerCase().includes(kw) ||
+    (it.executor?.title || '').toLowerCase().includes(kw))
+})
 const dialogVisible = ref(false)
 const editing = reactive<any>({ id: undefined, app_name: '', title: '', address_type: 0, address_list: '' })
 

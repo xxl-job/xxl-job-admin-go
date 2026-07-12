@@ -26,6 +26,15 @@ func (r *Router) listJobs(c *gin.Context) {
 	if g := c.Query("group"); g != "" {
 		q = q.Where("job_group = ?", g)
 	}
+	if kw := c.Query("keyword"); kw != "" {
+		like := "%" + kw + "%"
+		q = q.Where("job_desc LIKE ? OR executor_handler LIKE ?", like, like)
+	}
+	if s := c.Query("status"); s == "running" {
+		q = q.Where("trigger_status = 1")
+	} else if s == "stopped" {
+		q = q.Where("trigger_status = 0")
+	}
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
 		fail(c, 500, "查询任务总数失败: "+err.Error())

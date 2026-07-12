@@ -1,7 +1,16 @@
 <template>
   <div class="p-4">
     <div class="mb-4 flex justify-between items-center">
-      <h2 class="text-lg font-bold">任务管理</h2>
+      <div class="flex items-center gap-2">
+        <h2 class="text-lg font-bold mr-4">任务管理</h2>
+        <el-input v-model="searchKw" placeholder="描述/Handler" style="width:200px" clearable @keyup.enter="onSearch" />
+        <el-select v-model="searchStatus" placeholder="状态" style="width:120px" clearable>
+          <el-option value="running" label="运行中" />
+          <el-option value="stopped" label="已停止" />
+        </el-select>
+        <el-button type="primary" @click="onSearch">查询</el-button>
+        <el-button @click="onReset">重置</el-button>
+      </div>
       <el-button type="primary" @click="openCreate">新建任务</el-button>
     </div>
 
@@ -271,16 +280,23 @@ function scheduleText(row: any): string {
   return `${types[row.schedule_type] || '?'}: ${row.schedule_conf}`
 }
 
+// 搜索
+const searchKw = ref('')
+const searchStatus = ref('')
+
 async function load() {
   loading.value = true
   try {
-    const res = await api.get<any>('/api/jobs', { params: { page: page.value, size: size.value } })
+    const res = await api.get<any>('/api/jobs', { params: { page: page.value, size: size.value, keyword: searchKw.value, status: searchStatus.value } })
     list.value = res.list || []
     total.value = res.total || 0
   } finally {
     loading.value = false
   }
 }
+
+function onSearch() { page.value = 1; load() }
+function onReset() { searchKw.value = ''; searchStatus.value = ''; page.value = 1; load() }
 
 function openCreate() {
   Object.assign(editing, emptyJob())

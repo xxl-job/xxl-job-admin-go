@@ -104,6 +104,15 @@ func (r *Router) listLogs(c *gin.Context) {
 	} else if s == "fail" {
 		q = q.Where("handle_code <> ? AND handle_code <> 0", 200)
 	}
+	if h := c.Query("handler"); h != "" {
+		q = q.Where("executor_handler LIKE ?", "%"+h+"%")
+	}
+	if st := c.Query("start_time"); st != "" {
+		q = q.Where("trigger_time >= ?", st)
+	}
+	if et := c.Query("end_time"); et != "" {
+		q = q.Where("trigger_time <= ?", et)
+	}
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
 		fail(c, 500, "查询日志总数失败: "+err.Error())

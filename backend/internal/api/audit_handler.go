@@ -10,6 +10,12 @@ import (
 func (r *Router) listAudit(c *gin.Context) {
 	page, size := parsePagination(c)
 	q := r.db.Model(&model.AuditLog{})
+	if a := c.Query("actor"); a != "" {
+		q = q.Where("actor LIKE ?", "%"+a+"%")
+	}
+	if ac := c.Query("action"); ac != "" {
+		q = q.Where("action LIKE ?", "%"+ac+"%")
+	}
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
 		fail(c, 500, "查询审计总数失败: "+err.Error())
