@@ -31,3 +31,7 @@
 ## 执行器开发
 
 如何用 Go 或其他语言编写执行器并连接调度中心，见开发者文档 [执行器开发](../design/executor-dev)。
+
+## 内置 handler（executor 镜像）
+
+`xxljob/xxl-job-executor` 镜像内置 4 个通用 handler，admin 建 BEAN 任务填名 + JSON 参数即用：httpCall、shellExec、mysqlQuery、sendWebhook。详见 [镜像部署](./docker-images#内置-handler)。

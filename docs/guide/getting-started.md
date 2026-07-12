@@ -2,6 +2,16 @@
 
 5 分钟启动调度中心、登录、注册执行器并调度第一个任务。
 
+## Docker 快速开始（推荐）
+
+```bash
+JWT_SECRET=your-strong-secret docker compose -f deploy/docker-compose.yml up
+```
+
+浏览器访问 `http://localhost:8080`（admin/123456）。详见 [镜像部署](./docker-images)。
+
+---
+
 ## 1. 前置条件
 
 - Docker + Docker Compose（推荐起步）

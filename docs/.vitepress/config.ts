@@ -38,6 +38,12 @@ export default defineConfig({
         ]
       },
       {
+        text: '部署',
+        items: [
+          { text: '镜像部署', link: '/guide/docker-images' }
+        ]
+      },
+      {
         text: '系统管理',
         items: [{ text: '用户与权限', link: '/guide/user' }]
       },
