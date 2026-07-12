@@ -46,7 +46,11 @@ type JobContext struct {
 }
 
 // Log 回传一行日志到 admin（前端实时日志 WebSocket 接收）。
+// sender 为 nil 时静默忽略（便于测试与无回传场景构造 JobContext）。
 func (j *JobContext) Log(msg string) {
+	if j.sender == nil {
+		return
+	}
 	j.logMu.Lock()
 	defer j.logMu.Unlock()
 	j.line++
@@ -57,6 +61,12 @@ func (j *JobContext) Log(msg string) {
 		LogContent: []byte(msg + "\n"),
 		End:        false,
 	}}})
+}
+
+// NewJobContext 构造任务上下文，供外部包（测试、自定义 handler）创建带日志回传的 JobContext。
+// sender 为日志/结果消息发送函数（通常绑定到 executor 的 stream.Send）；为 nil 时 Log 静默忽略。
+func NewJobContext(logID int64, sender func(*v1.ExecutorMessage)) *JobContext {
+	return &JobContext{LogID: logID, sender: sender}
 }
 
 // linkStream 双向流类型别名。
@@ -234,7 +244,7 @@ func (e *Executor) handleTrigger(ctx context.Context, stream linkStream, t *v1.T
 	e.registerRun(t.LogId, cancel)
 	defer e.unregisterRun(t.LogId)
 
-	jc := &JobContext{LogID: t.LogId, sender: func(m *v1.ExecutorMessage) { _ = e.send(stream, m) }}
+	jc := NewJobContext(t.LogId, func(m *v1.ExecutorMessage) { _ = e.send(stream, m) })
 	code, msg := e.runWithTimeout(taskCtx, cancel, jc, t)
 	jc.Log("[result] code=" + strconv.Itoa(code) + " msg=" + msg)
 	_ = e.send(stream, resultMsg(t.LogId, int32(code), msg))
