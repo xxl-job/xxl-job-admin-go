@@ -1,4 +1,4 @@
-.PHONY: tidy build run proto lint vet test up down clean
+.PHONY: tidy build run proto lint vet test up down clean docker-build
 
 ## 依赖：整理 go.mod
 tidy:
@@ -40,3 +40,8 @@ down:
 ## 清理
 clean:
 	rm -rf bin/ dist/
+
+## Docker：本地构建两镜像（单架构 amd64，不 push，验证用）
+docker-build:
+	docker build -f Dockerfile -t xxl-job-admin-go:dev --platform linux/amd64 ..
+	docker build -f cmd/executor/Dockerfile -t xxl-job-executor:dev --platform linux/amd64 ..
