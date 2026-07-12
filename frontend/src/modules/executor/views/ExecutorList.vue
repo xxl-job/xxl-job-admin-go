@@ -29,8 +29,9 @@
           <el-badge :value="row.online?.length || 0" type="primary" class="mr-2">
             <el-tag size="small">实例</el-tag>
           </el-badge>
-          <el-tag v-for="addr in row.online" :key="addr" size="small" class="mr-1 mb-1" type="success">
-            <span class="dot-online">●</span>{{ addr }}
+          <el-tag v-for="addr in row.online" :key="addr" size="small" class="mr-1 mb-1" type="success"
+            style="cursor: pointer" :title="`点击复制 ${addr}`" @click="copyAddr(addr)">
+            <span class="dot-online">●</span>{{ fmtAddr(addr) }}
           </el-tag>
           <span v-if="!row.online || row.online.length === 0" class="text-gray-400">无在线机器</span>
         </template>
@@ -82,6 +83,21 @@ async function load() {
     list.value = res.list || []
   } finally {
     loading.value = false
+  }
+}
+
+// fmtAddr 地址友好显示：[::1]:59659 -> localhost:59659；[ipv6]:port -> ipv6:port
+function fmtAddr(addr: string): string {
+  return addr.replace(/^\[::1\]/, 'localhost').replace(/^\[(.+)\]:(\d+)$/, '$1:$2')
+}
+
+// copyAddr 点击复制完整地址
+async function copyAddr(addr: string) {
+  try {
+    await navigator.clipboard.writeText(addr)
+    ElMessage.success('已复制: ' + addr)
+  } catch {
+    ElMessage.warning('复制失败，请手动选择')
   }
 }
 

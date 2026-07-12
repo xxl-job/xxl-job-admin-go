@@ -9,6 +9,9 @@
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="job_desc" label="描述" min-width="140" />
       <el-table-column prop="executor_handler" label="Handler" width="160" />
+      <el-table-column label="执行器" width="140">
+        <template #default="{ row }">{{ executorName(row.job_group) }}</template>
+      </el-table-column>
       <el-table-column label="调度" width="180">
         <template #default="{ row }">
           {{ scheduleText(row) }}
@@ -47,7 +50,12 @@
           <el-collapse-item title="基础信息" name="basic">
             <el-row :gutter="16">
               <el-col :span="12"><el-form-item label="描述"><el-input v-model="editing.job_desc" /></el-form-item></el-col>
-              <el-col :span="12"><el-form-item label="执行器分组ID"><el-input-number v-model="editing.job_group" :min="1" /></el-form-item></el-col>
+              <el-col :span="12"><el-form-item label="执行器分组">
+                <el-select v-model="editing.job_group" placeholder="选择执行器分组" filterable style="width:100%">
+                  <el-option v-for="ex in executorOptions" :key="ex.id" :value="ex.id"
+                    :label="`${ex.app_name}${ex.title ? ' (' + ex.title + ')' : ''}`" />
+                </el-select>
+              </el-form-item></el-col>
               <el-col :span="12"><el-form-item label="Handler"><el-input v-model="editing.executor_handler" /></el-form-item></el-col>
               <el-col :span="12"><el-form-item label="参数"><el-input v-model="editing.executor_param" /></el-form-item></el-col>
             </el-row>
@@ -182,6 +190,21 @@ const total = ref(0)
 const page = ref(1)
 const size = ref(20)
 const loading = ref(false)
+// 执行器分组选项（任务表单下拉 + 列表名称映射用）
+const executorOptions = ref<any[]>([])
+
+async function loadExecutors() {
+  try {
+    const res = await api.get<any>('/api/executors')
+    executorOptions.value = (res.list || []).map((it: any) => it.executor).filter((e: any) => e && e.id !== 0)
+  } catch {
+    executorOptions.value = []
+  }
+}
+function executorName(jobGroup: number): string {
+  const ex = executorOptions.value.find((e: any) => e.id === jobGroup)
+  return ex ? ex.app_name : `#${jobGroup}`
+}
 const dialogVisible = ref(false)
 const editing = reactive<Job>(emptyJob())
 
@@ -348,7 +371,10 @@ async function removeJob(row: any) {
   load()
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadExecutors()
+})
 </script>
 
 <style scoped>
