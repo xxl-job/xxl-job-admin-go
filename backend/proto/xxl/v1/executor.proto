@@ -4,7 +4,7 @@ package xxl.v1;
 
 import "xxl/v1/common.proto";
 
-option go_package = "xxl-job-admin-go/internal/gen/xxl/v1;xxlv1";
+option go_package = "xxl-job-admin-go/pkg/gen/xxl/v1;xxlv1";
 
 // ============ 执行器 ↔ admin 主链路：单一双向流 ============
 service ExecutorLink {

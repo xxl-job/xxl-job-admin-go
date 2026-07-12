@@ -13,11 +13,11 @@ import (
 	"gorm.io/gorm"
 
 	"xxl-job-admin-go/internal/circuit"
-	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
 	"xxl-job-admin-go/internal/limiter"
 	"xxl-job-admin-go/internal/metrics"
 	"xxl-job-admin-go/internal/model"
 	"xxl-job-admin-go/internal/registry"
+	v1 "xxl-job-admin-go/pkg/gen/xxl/v1"
 )
 
 // timeNowNanos 返回当前 unix 纳秒（lruRouter 用）。封装便于测试。

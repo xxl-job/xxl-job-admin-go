@@ -9,9 +9,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
 	"xxl-job-admin-go/internal/model"
 	"xxl-job-admin-go/internal/registry"
+	v1 "xxl-job-admin-go/pkg/gen/xxl/v1"
 )
 
 // newTestDB 构造 sqlite 内存库并 AutoMigrate TaskRun。

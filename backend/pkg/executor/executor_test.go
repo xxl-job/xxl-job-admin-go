@@ -7,7 +7,7 @@ import (
 
 	"go.uber.org/zap"
 
-	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
+	v1 "xxl-job-admin-go/pkg/gen/xxl/v1"
 )
 
 // noopSender 测试用：丢弃所有回传消息，不阻塞。

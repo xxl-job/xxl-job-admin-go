@@ -18,8 +18,8 @@ import (
 	"gorm.io/gorm"
 
 	"xxl-job-admin-go/internal/alarm"
-	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
 	"xxl-job-admin-go/internal/model"
+	v1 "xxl-job-admin-go/pkg/gen/xxl/v1"
 )
 
 func setupMySQL(t *testing.T) *gorm.DB {

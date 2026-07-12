@@ -13,7 +13,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"xxl-job-admin-go/internal/executor"
+	"xxl-job-admin-go/pkg/executor"
 )
 
 func main() {

@@ -7,9 +7,9 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
-	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
 	"xxl-job-admin-go/internal/model"
 	"xxl-job-admin-go/internal/registry"
+	v1 "xxl-job-admin-go/pkg/gen/xxl/v1"
 )
 
 // makeSendCh 测试用：带缓冲发送队列。

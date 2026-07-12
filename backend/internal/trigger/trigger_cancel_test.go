@@ -5,8 +5,8 @@ import (
 
 	"go.uber.org/zap"
 
-	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
 	"xxl-job-admin-go/internal/registry"
+	v1 "xxl-job-admin-go/pkg/gen/xxl/v1"
 )
 
 // TestSendCancelDispatchesCancelTask 验证 cover-early 阻塞策略下，

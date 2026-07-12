@@ -29,8 +29,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 
-	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
-	"xxl-job-admin-go/internal/gen/xxl/v1/xxlv1connect"
+	v1 "xxl-job-admin-go/pkg/gen/xxl/v1"
+	"xxl-job-admin-go/pkg/gen/xxl/v1/xxlv1connect"
 )
 
 // HandlerFunc 任务处理函数：返回 (code, msg)，code 200 表示成功。
@@ -252,10 +252,7 @@ func (e *Executor) runWithTimeout(taskCtx context.Context, cancel context.Cancel
 	done := make(chan result, 1) // buffered：handler 返回后即使无人接收也不阻塞
 	go func() {
 		c, m := e.executeTask(taskCtx, jc, t)
-		select {
-		case done <- result{c, m}:
-		case <-taskCtx.Done(): // 已超时或被取消，丢弃结果避免第二结果
-		}
+		done <- result{c, m} // buffer(1) 不阻塞；结果唯一性由 handleTrigger 单发送点保证
 	}()
 
 	if t.ExecutorTimeout > 0 {

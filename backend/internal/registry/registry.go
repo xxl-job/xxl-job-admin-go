@@ -9,8 +9,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	v1 "xxl-job-admin-go/internal/gen/xxl/v1"
 	"xxl-job-admin-go/internal/metrics"
+	v1 "xxl-job-admin-go/pkg/gen/xxl/v1"
 )
 
 // LoadReport 执行器负载（路由依据）。
