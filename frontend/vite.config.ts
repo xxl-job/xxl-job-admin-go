@@ -19,7 +19,7 @@ export default defineConfig({
     proxy: {
       // admin REST API（登录、任务/执行器/日志 CRUD）
       '/api': {
-        target: 'http://localhost:18080',
+        target: 'http://localhost:8080',
         changeOrigin: true
       },
       // ConnectRPC（执行器 + 未来前端 connect-web 直连）
