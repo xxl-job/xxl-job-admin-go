@@ -41,9 +41,9 @@ const font = reactive({
 })
 
 const watermarkContent = computed(() => [
-  profile.value?.username || 'XXL-JOB',
-  profile.value?.nickname || ''
-].filter(Boolean))
+  profile.value?.username || 'Guest',
+  'XXL-JOB'
+])
 
 watch(
   isDark,
