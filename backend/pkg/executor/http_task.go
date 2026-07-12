@@ -34,7 +34,7 @@ type HTTPRequest struct {
 }
 
 const (
-	defaultHTTPTimeoutSecs = 30    // HTTP 任务/handler 默认超时（秒），任务与 Job 都未配置时兜底
+	defaultHTTPTimeoutSecs = 30      // HTTP 任务/handler 默认超时（秒），任务与 Job 都未配置时兜底
 	httpRespBodyLimit      = 1 << 16 // 读取响应体上限 64KB，防止大响应撑爆 handle_msg
 )
 
