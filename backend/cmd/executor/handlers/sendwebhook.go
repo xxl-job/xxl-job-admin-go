@@ -1,11 +1,10 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"io"
-	"net/http"
+	"fmt"
+	"strconv"
 
 	"xxl-job-admin-go/pkg/executor"
 )
@@ -15,7 +14,8 @@ type sendWebhookParam struct {
 	JSON json.RawMessage `json:"json"`
 }
 
-// SendWebhook 通用 webhook 通知（钉钉/企微/飞书 JSON 直接发），返回响应状态码+体。
+// SendWebhook 通用 webhook 通知（POST application/json），成功（2xx）→ 200 + 响应体；否则 → 500。
+// 复用 executor.DoHTTP（含默认 30s 超时，修正早期版本用 http.DefaultClient 无超时的挂死隐患）。
 func SendWebhook(ctx context.Context, jc *executor.JobContext, param string) (int, string) {
 	var p sendWebhookParam
 	if err := json.Unmarshal([]byte(param), &p); err != nil {
@@ -24,17 +24,18 @@ func SendWebhook(ctx context.Context, jc *executor.JobContext, param string) (in
 	if p.URL == "" {
 		return 500, "url 必填"
 	}
-	req, err := http.NewRequestWithContext(ctx, "POST", p.URL, bytes.NewReader(p.JSON))
-	if err != nil {
-		return 500, "构造请求失败: " + err.Error()
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	status, body, err := executor.DoHTTP(ctx, executor.HTTPRequest{
+		URL:     p.URL,
+		Method:  "POST",
+		Headers: map[string]string{"Content-Type": "application/json"},
+		Body:    string(p.JSON),
+	})
 	if err != nil {
 		return 500, "发送失败: " + err.Error()
 	}
-	defer func() { _ = resp.Body.Close() }()
-	b, _ := io.ReadAll(resp.Body)
-	jc.Log("webhook -> " + resp.Status)
-	return resp.StatusCode, string(b)
+	jc.Log("webhook -> " + strconv.Itoa(status))
+	if !executor.IsHTTPSuccess(status, nil) {
+		return 500, fmt.Sprintf("http %d: %s", status, executor.Truncate(body, 500))
+	}
+	return 200, body
 }

@@ -1,7 +1,10 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,6 +16,26 @@ import (
 // assertJobOwner 校验当前用户对 job 的访问权：admin 放行，否则仅创建者。
 func assertJobOwner(c *gin.Context, job *model.Job) bool {
 	return isAdmin(c) || job.CreatorID == currentUID(c)
+}
+
+// validateJob 校验任务字段合法性：glue_type 取值范围 + HTTP(glue_type=4) 配置可解析且 url 非空。
+// 防止前端绕过写入无法执行的任务数据。
+func validateJob(glueType int8, glueSource string) error {
+	if glueType < 0 || glueType > 4 {
+		return fmt.Errorf("不支持的 glue_type: %d", glueType)
+	}
+	if glueType == 4 {
+		var cfg struct {
+			URL string `json:"url"`
+		}
+		if err := json.Unmarshal([]byte(glueSource), &cfg); err != nil {
+			return fmt.Errorf("HTTP 任务配置非法: %v", err)
+		}
+		if strings.TrimSpace(cfg.URL) == "" {
+			return fmt.Errorf("HTTP 任务配置非法: url 不能为空")
+		}
+	}
+	return nil
 }
 
 // listJobs GET /api/jobs?group=&page=&size=
@@ -72,6 +95,13 @@ func (r *Router) createJob(c *gin.Context) {
 	job.ID = 0
 	job.TriggerStatus = 0         // 默认停止
 	job.CreatorID = currentUID(c) // 创建者：当前登录用户
+	if job.ExecutorRouteStrategy <= 0 {
+		job.ExecutorRouteStrategy = 1 // 默认"第一个"，防止 route_strategy=0 触发时 router==nil 静默失败
+	}
+	if err := validateJob(job.GlueType, job.GlueSource); err != nil {
+		fail(c, 400, err.Error())
+		return
+	}
 	if err := r.db.Create(&job).Error; err != nil {
 		fail(c, 500, err.Error())
 		return
@@ -93,6 +123,10 @@ func (r *Router) updateJob(c *gin.Context) {
 	var body model.Job
 	if err := c.ShouldBindJSON(&body); err != nil {
 		fail(c, 500, err.Error())
+		return
+	}
+	if err := validateJob(body.GlueType, body.GlueSource); err != nil {
+		fail(c, 400, err.Error())
 		return
 	}
 	// 记录原调度配置，用于检测变更并热重算下次触发

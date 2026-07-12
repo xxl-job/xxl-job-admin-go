@@ -53,6 +53,7 @@ func demoSeed(db *gorm.DB) error {
 // 断线自动重连，gRPC server 未就绪时重试。阻塞直到 ctx 取消。
 func runDemoExecutor(ctx context.Context, logger *zap.Logger) {
 	ex := executor.New("http://localhost:9090", "demo-app", "", logger)
+	ex.WithHTTPTask(true) // demo 开启 HTTP 任务能力，便于开箱验证 glue_type=4
 	ex.Register("demoJob", func(ctx context.Context, jc *executor.JobContext, param string) (int, string) {
 		jc.Log("demoJob 开始执行, param=" + param)
 		time.Sleep(200 * time.Millisecond)
