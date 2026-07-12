@@ -208,6 +208,37 @@ func strconvFormatInt(n int64) string {
 	return string(buf[i:])
 }
 
+// TestListExecutorsMergesOnline 验证：DB 有分组的展示其在线地址；
+// 内存在线但 DB 无分组的 app 以虚拟项(id=0)展示。
+func TestListExecutorsMergesOnline(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	_, resp := doJSON(r, "POST", "/api/auth/sessions", "", map[string]string{"username": "admin", "password": "123456"})
+	token := resp["data"].(map[string]any)["accessToken"].(string)
+
+	// DB 建分组 configured-app
+	doJSON(r, "POST", "/api/executors", token, map[string]any{"app_name": "configured-app", "title": "已配置", "address_type": 0})
+
+	// 内存注册两台：一台属 configured-app，一台属未配置的 loose-app
+	r.reg.OnConnect("configured-app", "c1", &registry.ExecutorConn{AppName: "configured-app", Address: "1.1.1.1:9999"})
+	r.reg.OnConnect("loose-app", "l1", &registry.ExecutorConn{AppName: "loose-app", Address: "2.2.2.2:9999"})
+
+	_, resp = doJSON(r, "GET", "/api/executors", token, nil)
+	list := resp["data"].(map[string]any)["list"].([]any)
+	// 期望 2 项：configured-app（有在线）+ loose-app（虚拟项 id=0）
+	if len(list) != 2 {
+		t.Fatalf("expect 2 entries, got %d (%+v)", len(list), list)
+	}
+	byApp := map[string]map[string]any{}
+	for _, it := range list {
+		m := it.(map[string]any)
+		ex := m["executor"].(map[string]any)
+		byApp[ex["app_name"].(string)] = m
+	}
+	if m, ok := byApp["loose-app"]; !ok || m["executor"].(map[string]any)["id"] != float64(0) {
+		t.Fatalf("loose-app 应以虚拟项 id=0 展示，got %+v", byApp["loose-app"])
+	}
+}
+
 // TestRBAC_NonAdminForbidden 验证普通用户(role=0)任务按创建者隔离：
 // 可创建/管理自己的 job，不能触碰他人的 job（403）；executor/users/audit 仍仅管理员。
 func TestRBAC_NonAdminForbidden(t *testing.T) {
