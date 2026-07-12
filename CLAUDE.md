@@ -38,7 +38,7 @@ cd docs && pnpm install && pnpm docs:build
 
 ## 关键约定
 
-- **module 名**：保持 `xxl-job-admin-go`（应用非库，import 路径稳定，proto/buf 零路径耦合）
+- **module 名**：保持 `xxl-job-admin-go`。admin 应用代码在 `internal/`（私有），执行器 SDK + proto 生成在 `pkg/`（对外公开）-- 外部执行器 `import "xxl-job-admin-go/pkg/executor"` 与 `"xxl-job-admin-go/pkg/gen/xxl/v1"`。proto 生成路径 `pkg/gen`，改 proto 后 `make proto` 重新生成。
 - **流量泳道**：执行器 `cluster` 标签走 `RegisterRequest.meta["cluster"]`，proto 零改动；任务 `Job.Cluster` 指定目标 cluster
 - **响应格式**：`{code:0, data, msg}`（适配 vue-admin），HTTP 统一 200
 - **注释语言**：与现有代码库一致（中文）
