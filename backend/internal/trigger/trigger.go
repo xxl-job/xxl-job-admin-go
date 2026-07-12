@@ -154,14 +154,17 @@ func (t *Trigger) trigger(ctx context.Context, job *model.Job) error {
 	// 2. 查执行器分组
 	var exec model.Executor
 	if err := t.db.First(&exec, job.JobGroup).Error; err != nil {
+		t.recordTriggerFail(job, "", fmt.Sprintf("执行器分组 %d 未找到: %v", job.JobGroup, err))
 		return fmt.Errorf("find executor: %w", err)
 	}
 
 	// 熔断检查：app 级别，open 状态拒绝调度（避免持续向故障 app 投递）
 	if t.breaker != nil && !t.breaker.Allow(exec.AppName) {
+		t.recordTriggerFail(job, "", fmt.Sprintf("app %q 熔断中", exec.AppName))
 		return fmt.Errorf("app %q circuit breaker open", exec.AppName)
 	}
 	if t.rateLimiter != nil && !t.rateLimiter.Allow(exec.AppName) {
+		t.recordTriggerFail(job, "", fmt.Sprintf("app %q 被限流", exec.AppName))
 		return fmt.Errorf("app %q rate limited", exec.AppName)
 	}
 
@@ -173,14 +176,17 @@ func (t *Trigger) trigger(ctx context.Context, job *model.Job) error {
 		conns = t.reg.Conns(exec.AppName)
 	}
 	if len(conns) == 0 {
+		t.recordTriggerFail(job, "", fmt.Sprintf("app %q cluster %q 无在线执行器", exec.AppName, job.Cluster))
 		return fmt.Errorf("no online executor for app %q cluster %q", exec.AppName, job.Cluster)
 	}
 	router := t.routers.Get(job.ExecutorRouteStrategy)
 	if router == nil {
+		t.recordTriggerFail(job, "", fmt.Sprintf("未知路由策略 %d", job.ExecutorRouteStrategy))
 		return fmt.Errorf("unknown route strategy %d", job.ExecutorRouteStrategy)
 	}
 	targets := router.Route(job, conns)
 	if len(targets) == 0 {
+		t.recordTriggerFail(job, "", "路由器未返回目标")
 		return fmt.Errorf("router returned no target")
 	}
 
@@ -256,7 +262,26 @@ func (t *Trigger) dispatch(job *model.Job, conn *registry.ExecutorConn, logID in
 	case conn.Send <- msg:
 	default:
 		t.log.Warn("executor send queue full", zap.Uint64("job_id", job.ID), zap.String("addr", conn.Address))
+		t.recordTriggerFail(job, conn.Address, "执行器发送队列已满")
 		t.trackDone(job.ID, logID)
+	}
+}
+
+// recordTriggerFail 触发失败补写一条 TaskRun（trigger_code=500），便于日志页回溯"为什么没跑"。
+// 不写 JobTriggerDedup（失败/异常路径不应被 fire_second 幂等拦截）。
+func (t *Trigger) recordTriggerFail(job *model.Job, addr, reason string) {
+	run := &model.TaskRun{
+		JobID:           job.ID,
+		ExecutorAddress: addr,
+		ExecutorApp:     "", // 失败前可能未确定 app，留空
+		ExecutorHandler: job.ExecutorHandler,
+		ExecutorParam:   job.ExecutorParam,
+		TriggerTime:     time.Now(),
+		TriggerCode:     500,
+		TriggerMsg:      fmt.Sprintf("触发失败: %s", reason),
+	}
+	if err := t.db.Create(run).Error; err != nil {
+		t.log.Error("record trigger fail", zap.Uint64("job_id", job.ID), zap.Error(err))
 	}
 }
 
@@ -283,6 +308,7 @@ func (t *Trigger) createTaskRun(job *model.Job, conn *registry.ExecutorConn, sha
 		ExecutorParam:   job.ExecutorParam,
 		TriggerTime:     time.Now(),
 		TriggerCode:     200,
+		TriggerMsg:      fmt.Sprintf("路由策略=%d, 目标机器=%s, 触发结果=成功", job.ExecutorRouteStrategy, conn.Address),
 	}
 	if shardTotal > 1 {
 		run.ExecutorShardingParam = fmt.Sprintf("%d/%d", shardIndex+1, shardTotal)
