@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
-    "@vueuse/core": "^11.3.0",
+    "@vueuse/core": "^14.3.0",
     "axios": "^1.18.1",
     "echarts": "^6.1.0",
     "element-plus": "^2.14.3",
