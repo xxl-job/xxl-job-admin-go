@@ -10,6 +10,10 @@ JWT_SECRET=your-strong-secret docker compose -f deploy/docker-compose.yml up
 
 浏览器访问 `http://localhost:8080`（admin/123456）。详见 [镜像部署](./docker-images)。
 
+::: tip 仅体验？
+不想单独部署 executor？用 [all-in-one 2 容器 compose](./docker-images#一键体验-all-in-one-2-容器)：`JWT_SECRET=xxx docker compose -f deploy/docker-compose.allinone.yml up`，admin 内嵌通用执行器，开箱即用。
+:::
+
 ---
 
 ## 1. 前置条件

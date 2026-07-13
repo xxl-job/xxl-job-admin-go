@@ -13,8 +13,8 @@
 
     <el-table :data="filteredList" v-loading="loading" border stripe>
       <el-table-column prop="executor.id" label="ID" width="70" />
-      <el-table-column prop="executor.app_name" label="AppName" width="160" />
-      <el-table-column prop="executor.title" label="标题" min-width="140">
+      <el-table-column prop="executor.app_name" label="AppName" width="160" show-overflow-tooltip />
+      <el-table-column prop="executor.title" label="标题" min-width="140" show-overflow-tooltip>
         <template #default="{ row }">
           {{ row.executor.title }}
           <el-tag v-if="row.executor.id === 0" size="small" type="info" class="ml-1">未配置分组</el-tag>
@@ -63,7 +63,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="save">保存</el-button>
+        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -86,6 +86,7 @@ const filteredList = computed(() => {
 })
 const dialogVisible = ref(false)
 const editing = reactive<any>({ id: undefined, app_name: '', title: '', address_type: 0, address_list: '' })
+const saving = ref(false)
 
 async function load() {
   loading.value = true
@@ -129,14 +130,19 @@ function openEdit(row: any) {
 }
 
 async function save() {
-  if (editing.id) {
-    await api.put(`/api/executors/${editing.id}`, editing)
-  } else {
-    await api.post('/api/executors', editing)
+  saving.value = true
+  try {
+    if (editing.id) {
+      await api.put(`/api/executors/${editing.id}`, editing)
+    } else {
+      await api.post('/api/executors', editing)
+    }
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    load()
+  } finally {
+    saving.value = false
   }
-  ElMessage.success('保存成功')
-  dialogVisible.value = false
-  load()
 }
 
 async function remove(row: any) {

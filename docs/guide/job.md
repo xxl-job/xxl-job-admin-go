@@ -17,6 +17,22 @@
 | 超时时间 | 单次执行超时（秒，0=不限） |
 | 失败重试次数 | 失败后重试次数 |
 
+### 基础信息字段填写要点
+
+**执行器分组**：从下拉选，选项来自「执行器管理」页的分组（显示 `app_name (title)`）。任务只能调度到所选分组当前在线的执行器；分组无在线机器则触发失败。
+
+**任务描述**：任意展示名，用于列表与日志识别，建议填有业务含义的名字（如「日报数据同步」）。
+
+**Handler 与参数**：随「GLUE 类型」不同而填法不同：
+
+| GLUE 类型 | Handler | 参数 |
+|---|---|---|
+| BEAN（已注册 handler） | **必填**，填执行器注册的 handler 名（内置如 `httpCall`/`shellExec`/`mysqlQuery`/`sendWebhook`，或自定义 handler） | 传给 handler 的字符串；内置 handler 多为 JSON，格式见 [内置 handler](./docker-images#内置-handler) |
+| GLUE Go / Shell / Python | 留空（代码写在 GLUE 代码框） | 作为脚本/函数输入，如 Shell 的 `$XXL_JOB_PARAM` 环境变量 |
+| HTTP 调用（URL） | 留空（URL 等配置在 HTTP 表单） | 作为 `{{param}}` 注入 URL / 请求头 / 请求体 |
+
+> 即：只有 BEAN 任务需要填 Handler；HTTP 任务的「参数」是为占位符 `{{param}}` 提供值的。
+
 ### 调度类型与配置
 
 | 类型 | 配置格式 | 示例 |
@@ -70,6 +86,75 @@ GLUE 类型任务可直接在页面编辑代码，系统保留最近 30 个版�
 GLUE 默认关闭（执行器 `enable_script=false`）。在线代码有执行风险，仅在受控环境开启，详见根目录 `SECURITY.md`。
 :::
 
+## HTTP 调用任务（glue_type=4）
+
+GLUE 类型选「HTTP 调用（URL）」即可创建「定时调用一个 URL」的任务——典型用于触发 webhook、定时健康检查、回调第三方接口。配置以结构化表单编辑，序列化为 JSON 存入 `glue_source`，由执行器发起 HTTP 请求。
+
+::: tip
+HTTP 任务需执行器显式开启：SDK 调 `WithHTTPTask(true)`；`xxljob/xxl-job-executor` 镜像与 `-executor` 内嵌执行器已默认开启。
+:::
+
+### 字段说明
+
+| 字段 | 说明 |
+|---|---|
+| URL | 目标地址，**必填**；支持占位符 |
+| 方法 | GET(默认) / POST / PUT / DELETE / PATCH / HEAD |
+| 请求头 | 一行一个，格式 `Key: Value` |
+| 请求体 | 原始字符串，仅 POST/PUT/PATCH 携带；支持占位符 |
+| 超时(秒) | `0` = 回退「任务超时」→ 默认 `30` |
+| 期望状态码 | 逗号分隔，如 `200,201`；**留空 = 任意 2xx 算成功** |
+
+### 占位符
+
+URL / 请求头值 / 请求体在请求前替换：
+
+| 占位符 | 含义 |
+|---|---|
+| `{{param}}` | 任务的「任务参数」 |
+| `{{shardIndex}}` / `{{shardTotal}}` | 分片广播时的分片号/总数 |
+| `{{logId}}` | 本次调度日志 ID |
+
+### 成败判定
+
+命中「期望状态码」或（留空时）任意 `2xx` → 任务成功；否则失败（触发重试/告警）。**注意 `201/204` 默认算成功**（区别于直接返回原始码的做法）。
+
+### 示例
+
+GET 健康检查（每 1 分钟）：
+
+```
+URL:   https://api.example.com/health
+方法:  GET
+期望:  200
+```
+
+POST webhook（带任务参数注入，每 5 分钟）：
+
+```
+URL:   https://oapi.dingtalk.com/robot/send?access_token=xxx
+方法:  POST
+请求头: Content-Type: application/json
+请求体: {"msgtype":"text","text":{"content":"定时通知 {{param}}"}}
+期望:  200
+任务参数: 日报
+```
+
+### 与 httpCall handler 的区别
+
+两者都能「调 URL」，按需选择：
+
+| 维度 | HTTP 任务（glue_type=4） | BEAN + httpCall handler |
+|---|---|---|
+| 配置位置 | 任务定义（固定） | 任务参数（每次可变） |
+| 占位符 | ✅ `{{param}}` 等 | ❌ |
+| 期望状态码 | ✅ 可配 | ❌（固定 2xx） |
+| 分片广播 | ✅ 每个分片各发一次 | ✅ |
+| 适用 | 固定的定时回调/检查 | 参数频繁变化的一次性调用 |
+
+> httpCall 等内置 handler 的参数格式见 [内置 handler](./docker-images#内置-handler)。
+
+
 ## 场景示例
 
 | 场景 | 推荐配置 |
@@ -79,5 +164,7 @@ GLUE 默认关闭（执行器 `enable_script=false`）。在线代码有执行�
 | 慢任务限频 | 固定延时 `60` + 阻塞丢弃(1) |
 | 父子编排 | 父任务 `child_jobid` 填子任务 ID，父成功后触发子 |
 | 大数据分片 | 路由分片广播(10)，每台执行器处理一片 |
+| 定时 webhook | HTTP 任务，POST + 请求体 + 期望 200，如钉钉/企微/飞书机器人 |
+| 健康检查 | HTTP 任务，GET URL + 期望 200，失败触发告警/重试 |
 
 > 示例任务（CRON/固定频率/父子编排等）可通过 `--demo` 启动 admin 自动 seed，或参考 [`backend/examples/`](https://github.com/xxl-job/xxl-job-admin-go/tree/main/backend/examples) 的 GLUE 脚本。

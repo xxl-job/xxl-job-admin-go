@@ -33,6 +33,7 @@ import (
 
 func main() {
 	demo := flag.Bool("demo", false, "demo 模式：seed 示例数据 + 内嵌执行器，开箱即用（生产勿用）")
+	builtinExec := flag.Bool("executor", false, "内嵌通用执行器（all-in-one 用）：注册 httpCall/shellExec/mysqlQuery/sendWebhook")
 	flag.Parse()
 
 	// 1. 配置
@@ -114,6 +115,19 @@ func main() {
 			logger.Warn("demo seed", zap.Error(err))
 		}
 		go runDemoExecutor(ctx, logger)
+	}
+
+	// all-in-one 模式：seed 通用执行器分组 + 内嵌通用执行器（注册 4 个内置 handler）。
+	// 与 -demo 区别：不 seed 示例任务（避免依赖 demoJob/slowJob），供 all-in-one 镜像开箱即用。
+	if *builtinExec {
+		app := os.Getenv("APP_NAME")
+		if app == "" {
+			app = "builtin"
+		}
+		if err := builtinSeed(st.DB(), app); err != nil {
+			logger.Warn("builtin seed", zap.Error(err))
+		}
+		go runBuiltinExecutor(ctx, logger, app, cfg.Server.GRPCAddr, cfg.AccessToken)
 	}
 
 	// 7. RPC server（执行器连此端口）

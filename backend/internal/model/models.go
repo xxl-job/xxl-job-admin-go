@@ -84,6 +84,9 @@ type TaskRun struct {
 	HandleCode            int16      `gorm:"not null;default:0;column:handle_code" json:"handle_code"`
 	HandleMsg             string     `gorm:"type:text;column:handle_msg" json:"handle_msg"`
 	AlarmStatus           int8       `gorm:"not null;default:0;column:alarm_status" json:"alarm_status"`
+
+	// JobDesc 列表展示用冗余字段：listLogs 时批量回填 jobs.job_desc，不入库（gorm:"-"）。
+	JobDesc string `gorm:"-" json:"job_desc,omitempty"`
 }
 
 func (TaskRun) TableName() string { return "task_runs" }

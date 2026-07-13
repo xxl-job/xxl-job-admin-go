@@ -87,6 +87,7 @@ type Executor struct {
 	running      map[int64]context.CancelFunc // logID → 取消函数（CancelTask 用）
 	accessToken  string                       // 调度中心认证令牌
 	enableScript bool                         // 是否启用 GLUE/脚本任务（默认禁用，安全考虑）
+	enableHTTP   bool                         // 是否启用 HTTP 任务（默认禁用，可被用于内网探测）
 }
 
 // New 创建执行器。accessToken 与 admin 配置一致（为空则不发送）。
@@ -115,6 +116,13 @@ func (e *Executor) Register(name string, h HandlerFunc) {
 // 默认禁用：脚本/GLUE 可执行任意代码，仅在受控环境显式开启。详见 SECURITY.md。
 func (e *Executor) WithScriptTask(enable bool) *Executor {
 	e.enableScript = enable
+	return e
+}
+
+// WithHTTPTask 启用 HTTP 调用任务（glue_type=4）：执行器按 glue_source 中的 JSON 配置发起 HTTP 请求。
+// 默认禁用：HTTP 任务可被用于内网探测，仅在受控环境显式开启。
+func (e *Executor) WithHTTPTask(enable bool) *Executor {
+	e.enableHTTP = enable
 	return e
 }
 
@@ -328,6 +336,11 @@ func (e *Executor) executeTask(ctx context.Context, jc *JobContext, t *v1.Trigge
 		}
 		jc.Log("[script] 开始执行 Python 脚本")
 		return runScript("python3", t.GlueSource, t.ExecutorParams, jc)
+	case t.GlueType == 4 && t.GlueSource != "":
+		if !e.enableHTTP {
+			return 500, "HTTP 任务未启用：执行器需显式调用 WithHTTPTask(true)"
+		}
+		return runHTTP(ctx, t, jc)
 	}
 	e.mu.RLock()
 	h, ok := e.handlers[t.ExecutorHandler]

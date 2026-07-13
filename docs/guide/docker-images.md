@@ -17,6 +17,19 @@ JWT_SECRET=your-strong-secret docker compose -f deploy/docker-compose.yml up
 
 浏览器访问 `http://localhost:8080`（默认 admin/123456），executor 自动注册（app=default）。
 
+## 一键体验（all-in-one，2 容器）
+
+最少组件体验：mysql + admin（`-executor` 内嵌通用执行器），无需单独部署 executor 容器。
+
+```bash
+JWT_SECRET=your-strong-secret \
+  docker compose -f deploy/docker-compose.allinone.yml up
+```
+
+admin 进程内置通用执行器（app=default），自动注册 `httpCall`/`shellExec`/`mysqlQuery`/`sendWebhook` 四个通用 handler，建 BEAN 任务填 handler 名 + JSON 参数即可调度。仅映射 8080 端口（gRPC 9090 仅容器内本机连接，不对外）。
+
+> 适用：试用、演示、本地评估。**生产请用上面的 3 容器 compose**（executor 独立，便于伸缩与隔离）。
+
 ## 单容器运行
 
 ### admin
@@ -59,6 +72,8 @@ docker run -d --name executor \
 ## 内置 handler
 
 executor 镜像内置 4 个通用 handler，admin 建 BEAN 任务 JobHandler 填名、ExecutorParam 填 JSON 即调度：
+
+> **成功判定**：`httpCall`/`sendWebhook` 按响应状态码判定——2xx 算成功（任务码 200），其余判失败（任务码 500，触发重试/告警）。即 `201/204` 等正常响应也算成功。
 
 ### httpCall
 ```json

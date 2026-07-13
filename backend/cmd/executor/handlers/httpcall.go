@@ -3,10 +3,8 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"io"
-	"net/http"
-	"strings"
-	"time"
+	"fmt"
+	"strconv"
 
 	"xxl-job-admin-go/pkg/executor"
 )
@@ -20,7 +18,9 @@ type httpCallParam struct {
 	Timeout int               `json:"timeout"` // 秒，0=默认 30
 }
 
-// HTTPCall 通用 HTTP 请求 handler，返回 HTTP 状态码 + 响应体。
+// HTTPCall 通用 HTTP 请求 handler。成功（2xx）→ 200 + 响应体；否则 → 500。
+// 请求/超时/读响应复用 executor.DoHTTP；成败判定统一走 executor.IsHTTPSuccess
+// （修正早期版本把 HTTP 原始状态码当任务结果码、导致 201/204 被判失败的缺陷）。
 func HTTPCall(ctx context.Context, jc *executor.JobContext, param string) (int, string) {
 	var p httpCallParam
 	if err := json.Unmarshal([]byte(param), &p); err != nil {
@@ -29,31 +29,23 @@ func HTTPCall(ctx context.Context, jc *executor.JobContext, param string) (int, 
 	if p.URL == "" {
 		return 500, "url 必填"
 	}
-	if p.Method == "" {
-		p.Method = "GET"
-	}
-	timeout := time.Duration(p.Timeout) * time.Second
-	if timeout == 0 {
-		timeout = 30 * time.Second
-	}
-	cli := &http.Client{Timeout: timeout}
-	var body io.Reader
-	if p.Body != "" {
-		body = strings.NewReader(p.Body)
-	}
-	req, err := http.NewRequestWithContext(ctx, p.Method, p.URL, body)
-	if err != nil {
-		return 500, "构造请求失败: " + err.Error()
-	}
-	for k, v := range p.Headers {
-		req.Header.Set(k, v)
-	}
-	resp, err := cli.Do(req)
+	status, body, err := executor.DoHTTP(ctx, executor.HTTPRequest{
+		URL:     p.URL,
+		Method:  p.Method,
+		Headers: p.Headers,
+		Body:    p.Body,
+		Timeout: int32(p.Timeout),
+	})
 	if err != nil {
 		return 500, "请求失败: " + err.Error()
 	}
-	defer func() { _ = resp.Body.Close() }()
-	b, _ := io.ReadAll(resp.Body)
-	jc.Log("HTTP " + p.Method + " " + p.URL + " -> " + resp.Status)
-	return resp.StatusCode, string(b)
+	method := p.Method
+	if method == "" {
+		method = "GET"
+	}
+	jc.Log("HTTP " + method + " " + p.URL + " -> " + strconv.Itoa(status))
+	if !executor.IsHTTPSuccess(status, nil) {
+		return 500, fmt.Sprintf("http %d: %s", status, executor.Truncate(body, 500))
+	}
+	return 200, body
 }

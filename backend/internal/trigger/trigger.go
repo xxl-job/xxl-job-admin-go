@@ -389,6 +389,8 @@ func (t *Trigger) TriggerOnce(ctx context.Context, job *model.Job, paramOverride
 		}
 		router := t.routers.Get(job.ExecutorRouteStrategy)
 		if router == nil {
+			// 写失败日志，避免路由策略非法时静默失败（无日志可查）
+			t.recordTriggerFail(job, "", fmt.Sprintf("未知路由策略 %d", job.ExecutorRouteStrategy))
 			return fmt.Errorf("unknown route strategy %d", job.ExecutorRouteStrategy)
 		}
 		targets := router.Route(job, conns)

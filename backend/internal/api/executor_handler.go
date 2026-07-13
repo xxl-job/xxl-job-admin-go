@@ -123,6 +123,31 @@ func (r *Router) listLogs(c *gin.Context) {
 		fail(c, 500, "查询日志列表失败: "+err.Error())
 		return
 	}
+	// 批量回填 job_desc（单次 IN 查询 + 内存映射，避免 N+1）；失败降级为空，前端回退显示 #ID。
+	if len(logs) > 0 {
+		ids := make([]uint64, 0, len(logs))
+		seen := make(map[uint64]struct{}, len(logs))
+		for _, l := range logs {
+			if _, ok := seen[l.JobID]; !ok {
+				seen[l.JobID] = struct{}{}
+				ids = append(ids, l.JobID)
+			}
+		}
+		type jobDescRow struct {
+			ID      uint64
+			JobDesc string
+		}
+		var rows []jobDescRow
+		if err := r.db.Table("jobs").Select("id, job_desc").Where("id IN ?", ids).Scan(&rows).Error; err == nil {
+			m := make(map[uint64]string, len(rows))
+			for _, row := range rows {
+				m[row.ID] = row.JobDesc
+			}
+			for i := range logs {
+				logs[i].JobDesc = m[logs[i].JobID]
+			}
+		}
+	}
 	ok(c, gin.H{"list": logs, "total": total})
 }
 
