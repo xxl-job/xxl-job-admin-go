@@ -18,6 +18,10 @@ func newRetryTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// sqlite :memory: 每个连接是独立空库，强制单连接保证 AutoMigrate 与查询落在同一内存库（防 flaky）
+	if sqlDB, e := db.DB(); e == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
 	if err := db.AutoMigrate(&model.Job{}); err != nil {
 		t.Fatal(err)
 	}

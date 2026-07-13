@@ -27,6 +27,10 @@ func setupTestRouter(t *testing.T) (*Router, *gorm.DB) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
+	// sqlite :memory: 每个连接是独立空库，强制单连接保证 AutoMigrate 与查询落在同一内存库（防 flaky）
+	if sqlDB, e := db.DB(); e == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
 	if err := db.AutoMigrate(&model.User{}, &model.Job{}, &model.Executor{}, &model.TaskRun{}, &model.XxlJobLogGlue{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
