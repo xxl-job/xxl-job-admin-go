@@ -128,7 +128,7 @@ jobs:
           export JWT_SECRET="e2e-test-secret-0123456789abcdef"
           cd deploy && docker compose up -d
       - name: Wait for backend healthy
-        run: until curl -sf http://localhost:18080/healthz; do sleep 2; done
+        run: until curl -sf http://localhost:8080/healthz; do sleep 2; done
       - name: Run E2E
         working-directory: frontend
         run: npx playwright test
