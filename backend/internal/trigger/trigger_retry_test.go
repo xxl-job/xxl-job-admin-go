@@ -25,14 +25,14 @@ func newRetryTestDB(t *testing.T) *gorm.DB {
 }
 
 // TestRetryJobExhausted 重试次数耗尽后清除计数。
+// 直接测纯计数逻辑 recordRetry，避免 retryJob 的异步 Trigger 污染（竞态）。
 func TestRetryJobExhausted(t *testing.T) {
-	db := newRetryTestDB(t)
-	db.Create(&model.Job{ID: 1, ExecutorFailRetryCount: 2})
-	trig := NewTrigger(db, registry.NewMemory(), NewBlockTracker(), zap.NewNop())
+	trig := NewTrigger(nil, registry.NewMemory(), NewBlockTracker(), zap.NewNop())
+	const max = int16(2)
 
-	trig.retryJob(1) // 0→1
-	trig.retryJob(1) // 1→2
-	trig.retryJob(1) // 2>=2 清除
+	trig.recordRetry(1, max) // 0→1
+	trig.recordRetry(1, max) // 1→2
+	trig.recordRetry(1, max) // 2>=2 清除
 
 	trig.retryMu.Lock()
 	_, ok := trig.retryCount[1]

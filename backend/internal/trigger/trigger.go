@@ -95,18 +95,26 @@ func (t *Trigger) retryJob(jobID uint64) {
 	if job.ExecutorFailRetryCount <= 0 {
 		return
 	}
-	t.retryMu.Lock()
-	count := t.retryCount[jobID]
-	if count >= int16(job.ExecutorFailRetryCount) {
-		delete(t.retryCount, jobID)
-		t.retryMu.Unlock()
+	count, canRetry := t.recordRetry(jobID, int16(job.ExecutorFailRetryCount))
+	if !canRetry {
 		t.log.Info("retry exhausted", zap.Uint64("job_id", jobID), zap.Int("max", job.ExecutorFailRetryCount))
 		return
 	}
-	t.retryCount[jobID] = count + 1
-	t.retryMu.Unlock()
-	t.log.Info("retry job", zap.Uint64("job_id", jobID), zap.Int16("retry", count+1))
+	t.log.Info("retry job", zap.Uint64("job_id", jobID), zap.Int16("retry", count))
 	go t.Trigger(context.Background(), &job)
+}
+
+// recordRetry 记录一次重试计数（纯计数逻辑，无异步副作用，便于测试）。
+// 返回 (本次更新后的计数, 是否仍可重试)；已达上限时清除计数并返回 (0, false)。
+func (t *Trigger) recordRetry(jobID uint64, max int16) (int16, bool) {
+	t.retryMu.Lock()
+	defer t.retryMu.Unlock()
+	if t.retryCount[jobID] >= max {
+		delete(t.retryCount, jobID)
+		return 0, false
+	}
+	t.retryCount[jobID]++
+	return t.retryCount[jobID], true
 }
 
 func (t *Trigger) clearRetry(jobID uint64) {
