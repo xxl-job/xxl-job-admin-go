@@ -1,31 +1,39 @@
 version: 2
 updates:
-  # 后端 Go 依赖
+  # 后端 Go 依赖：月更 + 整体分组合并，降低噪音
   - package-ecosystem: gomod
     directory: /backend
     schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      go-deps:
+        patterns: ["*"]
 
-  # 前端 npm 依赖
+  # 前端 npm 依赖：月更 + 按生态分组，相关包一个 PR 一起升
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      vue-ecosystem:
+        patterns: ["vue", "vue-*", "@vue/*", "vue-router", "vue-i18n", "element-plus"]
+      lint:
+        patterns: ["eslint*", "@eslint/*", "@typescript-eslint/*"]
+      dev-misc:
+        dependency-type: "development"
 
-  # 文档站依赖
+  # 文档站依赖：月更
   - package-ecosystem: npm
     directory: /docs
     schedule:
       interval: monthly
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 2
 
-  # GitHub Actions 版本
+  # GitHub Actions 版本：月更
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 2
